@@ -1,0 +1,59 @@
+
+BIGQUERY CONVERSION RULES 
+
+This document provides a deep, narrative-style explanation of GoogleSQL for BigQuery’s conversion system, including casting, coercion, supertyping, and literal/parameter conversion. Designed for Retrieval-Augmented Generation (RAG), it contains dense semantic structure, self-contained descriptions, and rich conceptual context.
+
+---
+SECTION: OVERVIEW OF BIGQUERY CONVERSION MODEL
+
+BigQuery uses a unified conversion framework to reconcile differing data types during SQL execution. Conversions occur in several forms: explicit CAST operations, implicit coercion, determination of supertypes for multi-expression compatibility, and specialized conversion functions such as PARSE_DATE or PARSE_TIMESTAMP. Each mechanism exists to ensure that expressions, function arguments, and set operations behave predictably when combining or transforming values across types. Conversion rules govern how literals, query parameters, and table expressions interact with functions, operators, and other SQL constructs.
+
+---
+SECTION: CASTING – EXPLICIT CONVERSION
+
+CAST performs explicit, user-directed conversion from one data type to another. When CAST is applied, BigQuery attempts to reinterpret the underlying value according to the target type’s semantic and canonical structure. CAST may fail if the transformation is impossible, such as converting STRING to INT64 when the string cannot be parsed numerically. SAFE_CAST is a protective variant that returns NULL instead of an error, enabling robust query design for uncertain input conditions. Casting is deterministic and does not rely on context—the target type is fixed and the conversion rules strictly enforced.
+
+---
+SECTION: COERCION – IMPLICIT CONVERSION
+
+Coercion is BigQuery’s automatic type adaptation, applied when an expression must conform to a required type based on function signatures, operator rules, or expression semantics. For example, if a function requires FLOAT64 and receives an INT64 expression, BigQuery coerces the INT64 value into FLOAT64. Coercion never fails silently; it applies only when a known, valid transformation exists. Literal coercion and parameter coercion extend the mechanism by enabling STRING literals or parameters to convert into DATE, DATETIME, TIME, or TIMESTAMP when needed. Coercion enables flexible SQL authoring without requiring explicit CAST statements for many common operations.
+
+---
+SECTION: COMPARISON OF CASTING AND COERCION
+
+Casting is explicit and user-driven, while coercion is implicit and system-driven. Explicit CAST always takes priority over coercion, and coercion only occurs when BigQuery determines that the expression must adapt to match signature requirements. Coercion rules determine the valid target types for any given source type. For example, INT64 can be coerced to FLOAT64 or NUMERIC in contexts requiring it. STRING can be coerced to DATE or TIMESTAMP when used as an argument that expects temporal types. Many types, such as STRUCT and ARRAY, only coerce to themselves.
+
+---
+SECTION: LITERAL COERCION
+
+Literal coercion allows BigQuery to interpret literal values as different target types when used in contexts requiring specific data types. For example, a STRING literal like "2022-05-14" may be coerced into DATE when passed to a function expecting a DATE parameter. FLOAT64 literals may coerce to NUMERIC when exact decimal representation is required, though this may introduce small approximation differences. Notably, STRING literals cannot coerce to numeric types—such transformations require explicit CAST to enforce user intent. Literal coercion is evaluated during query analysis and errors early if conversion is not possible.
+
+---
+SECTION: QUERY PARAMETER COERCION
+
+Query parameters (e.g., @param) may also undergo coercion when their declared type differs from the expected type in expressions or function calls. STRING parameters can convert into DATE, DATETIME, TIME, or TIMESTAMP, matching the same rules as STRING literals. If coercion fails, BigQuery returns an error during query evaluation. Parameter coercion enhances flexibility in query templates and parameterized queries.
+
+---
+SECTION: SUPERTYPES – RESOLVING MULTIPLE TYPES
+
+A supertype represents a common type to which multiple expressions may be coerced. Supertypes are critical in operations like UNION ALL, CASE expressions, or any construct requiring all branch expressions to agree on a final compatible type. A type’s supertypes include itself and any broader types capable of safely representing its values. Numeric types form a hierarchy: INT64 < NUMERIC < BIGNUMERIC < FLOAT64. For complex types such as STRUCT or ARRAY, supertypes require matching structure and field/element types.
+
+To determine a common supertype among several inputs, BigQuery takes the intersection of their respective supertypes. If the intersection is empty, no common supertype exists. If non-empty, the most specific type within the intersection becomes the chosen supertype.
+
+---
+SECTION: EXACT AND INEXACT NUMERIC TYPES
+
+BigQuery distinguishes numeric types based on precision. Exact numeric types include INT64, NUMERIC, and BIGNUMERIC. These types preserve all digits precisely and cannot represent approximation. FLOAT64, on the other hand, is an inexact numeric type using approximate binary floating‑point representation. When determining supertypes among exact-only inputs, the result must remain an exact type. If both exact and inexact types are present, FLOAT64 may become the common supertype.
+
+---
+SECTION: TYPE SPECIFICITY
+
+Type specificity refers to how restrictive or narrow a type’s value domain is. More specific types have smaller domains, while less specific types have broader domains. For example, INT64 is more specific than FLOAT64 because FLOAT64 can represent a far wider numeric range. During supertype determination, BigQuery selects the most specific type that can represent all input values—balancing minimal widening with compatibility.
+
+---
+SECTION: SUPERTYPES AND LITERALS
+
+Literal values follow relaxed supertype rules because they can coerce into many target types. When resolving a literal’s supertype with non-literal expressions, BigQuery computes the common supertypes of all non-literals first, then attempts to find the most specific type into which the literal can be implicitly coerced. If only literal types appear, the supertype is computed solely from literal semantics. If all inputs are NULL literals, the resulting supertype defaults to INT64, ensuring deterministic behavior in expressions like CASE or UNION involving only NULL.
+
+---
+END OF DOCUMENT

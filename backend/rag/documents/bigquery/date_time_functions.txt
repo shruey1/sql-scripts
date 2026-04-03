@@ -1,0 +1,60 @@
+BIGQUERY DATETIME FUNCTIONS 
+This document provides a deeply descriptive, narrative exploration of GoogleSQL for BigQuery’s DATETIME functions. It mirrors the style of the previous semantic RAG documents—dense, sectioned, and optimized for embeddings. Each function is explained in context, focusing on conceptual clarity and precise semantic detail.
+
+---
+SECTION: OVERVIEW OF DATETIME FUNCTIONS IN BIGQUERY
+
+BigQuery’s DATETIME functions operate on values that represent a civil date combined with a civil time, independent of any time zone. DATETIME captures what a human would read on a clock and calendar, without converting across time zones or applying offsets. Because of this neutrality, DATETIME functions are ideal for business rules, schedules, logs collected without time zone precision, and contexts where local civil time must be preserved. All outputs follow the ISO 8601 standard and display the date and time components separated by the letter ‘T’. BigQuery offers robust tools to construct, compare, modify, truncate, format, and parse DATETIME values.
+
+---
+SECTION: CURRENT_DATETIME – RETRIEVING THE PRESENT CIVIL DATETIME
+
+CURRENT_DATETIME returns the current date and time as a DATETIME value. It is evaluated only once at the beginning of a query, keeping its value consistent across multiple invocations within that query. An optional time zone parameter shifts the frame of reference: the returned DATETIME reflects the civil time in the specified zone. If no zone is provided, UTC is used. If the argument resolves to NULL, the function returns NULL. This function is central to temporal calculations relying on “now” as a reference point.
+
+---
+SECTION: DATETIME – CONSTRUCTION FROM COMPONENTS OR OTHER TEMPORAL TYPES
+
+The DATETIME function can construct a DATETIME from explicit integer fields (year, month, day, hour, minute, second), from a DATE combined with an optional TIME, or from a TIMESTAMP interpreted under a specified time zone. When converting from a TIMESTAMP, the timestamp’s instant is translated into civil time in the designated zone. Without such a zone, UTC is assumed. This allows precise extraction of local civil times from global instants. DATETIME unifies diverse inputs into a predictable, zone-free representation.
+
+---
+SECTION: DATETIME_ADD – ADDING TEMPORAL INTERVALS
+
+DATETIME_ADD shifts a DATETIME forward by a given INTERVAL. Supported units include MICROSECOND, MILLISECOND, SECOND, MINUTE, HOUR, DAY, WEEK, MONTH, QUARTER, and YEAR. For MONTH, QUARTER, and YEAR, BigQuery applies intuitive month-end behavior: if the target month contains fewer days than the original date, the result aligns with the final valid day of the target month. This protects against invalid dates such as “February 30.” DATETIME_ADD is extensively used in forward-scheduling tasks and calculating future deadlines.
+
+---
+SECTION: DATETIME_DIFF – CALCULATING BOUNDARY DIFFERENCES
+
+DATETIME_DIFF computes the number of boundary crossings between two DATETIME values using a chosen granularity. These boundaries depend on the unit: a DAY boundary crosses at local midnight, while WEEK boundaries depend on the weekday specified (default Sunday). ISO-based units—ISOWEEK and ISOYEAR—use ISO 8601 rules, often causing differences from Gregorian boundaries near year transitions. For small units like SECOND or MICROSECOND, differences reflect exact elapsed boundaries. Negative values indicate that the end DATETIME is earlier than the start. Overflow checks prevent impossible microsecond differences from causing invalid results.
+
+---
+SECTION: DATETIME_SUB – SUBTRACTING TEMPORAL INTERVALS
+
+DATETIME_SUB behaves analogously to DATETIME_ADD but shifts backward in time. It respects the same month-end normalization rules, ensuring predictable month and year math. This function is essential for computing lookback windows, aging metrics, or evaluating past system states.
+
+---
+SECTION: DATETIME_TRUNC – ROUNDING DOWN TO A SPECIFIC GRANULARITY
+
+DATETIME_TRUNC truncates a DATETIME or TIMESTAMP to the beginning of a specified granularity. For DATETIME inputs, both date and time granularities may be used—such as truncating to HOUR, MINUTE, DAY, WEEK, MONTH, QUARTER, YEAR, or their ISO equivalents. For TIMESTAMP inputs, an optional time zone determines the civil interpretation used for truncation. Near daylight‑saving transitions that fall outside hourly boundaries, results may behave unexpectedly, because truncation uses civil time rather than absolute instants. The function always returns the earliest possible moment within the chosen granularity.
+
+---
+SECTION: EXTRACT – RETRIEVING INDIVIDUAL COMPONENTS
+
+EXTRACT isolates specific fields from a DATETIME expression. Supported parts range from fine-grained units (MICROSECOND, MILLISECOND, SECOND, MINUTE, HOUR) to calendar units (DAY, DAYOFYEAR, MONTH, QUARTER, YEAR). Week-based extractions include WEEK, WEEK(WEEKDAY), ISOWEEK, and ISOYEAR, providing insight into positional context within week systems. Extracting DATE returns a DATE object representing the date portion; extracting TIME returns only the time portion. Lower-order precision is truncated, not rounded. These extractions help construct derived features for analytics and scheduling.
+
+---
+SECTION: FORMAT_DATETIME – PRODUCING HUMAN-READABLE TEXT
+
+FORMAT_DATETIME applies a format string containing percent-style elements to produce a STRING representation of a DATETIME. This allows generation of custom display formats, logs, file naming conventions, or user-facing textual representations. All format elements follow the same semantics as those used in DATE, TIME, and TIMESTAMP formatting, reliably reflecting localized month names, abbreviated day names, numeric fields, and composite layout symbols.
+
+---
+SECTION: LAST_DAY – BOUNDARY OF CALENDAR PERIODS
+
+LAST_DAY returns the final calendar DATE of a period containing a given DATETIME. By default, it computes the last day of the month, but other granularities such as YEAR, QUARTER, WEEK, WEEK(WEEKDAY), ISOWEEK, and ISOYEAR may be specified. This function is vital for financial analysis, monthly rollups, and determining period endpoints for reporting systems. It always returns a DATE, even when given a DATETIME as input.
+
+---
+SECTION: PARSE_DATETIME – CONVERTING TEXT INTO DATETIME
+
+PARSE_DATETIME interprets a STRING according to a format string and produces a DATETIME. All elements must match positionally unless higher-level format elements (such as %c) can fully describe the structure. Unspecified fields default to 1970‑01‑01 00:00:00. Names are case-insensitive, and whitespace rules permit flexible spacing. Overlapping format elements resolve by precedence: typically, the last one applies, with known exceptions such as %F overriding %Y. ISO and non‑ISO elements do not mix; when combined, ISO elements are ignored. Parsing respects known constraints such as requiring separators after %G‑based fields to avoid ambiguity. This function is essential for ingestion pipelines that convert textual timestamps into structured DATETIME values.
+
+---
+END OF DOCUMENT

@@ -1,0 +1,56 @@
+
+BIGQUERY TIME FUNCTIONS 
+This document presents a comprehensive, narrative-style explanation of GoogleSQL for BigQuery’s TIME functions. It follows the same semantic density and structural approach as the previous documents, ensuring strong embedding performance for Retrieval‑Augmented Generation (RAG). Each section delivers context-rich descriptions designed for accurate semantic retrieval.
+
+---
+SECTION: OVERVIEW OF BIGQUERY TIME FUNCTIONS
+
+BigQuery’s TIME functions operate exclusively on civil time—representing hours, minutes, seconds, and microseconds—without any reference to dates or time zones. TIME values describe moments in a 24‑hour civil clock cycle, independent of location. These functions support precise manipulation of time-of-day values, formatting and parsing of string representations, arithmetic with sub‑second precision, and extraction of time components. Because TIME values do not include dates, they wrap naturally at midnight when values exceed 24:00:00 or fall below 00:00:00, making them ideal for schedules, operational logs, shift-based analysis, and time‑only business rules.
+
+---
+SECTION: CURRENT_TIME – OBTAINING THE PRESENT CIVIL TIME
+
+CURRENT_TIME returns the current time-of-day as a TIME object. Its evaluation occurs once at the beginning of query execution, ensuring consistent results across repeated calls within the same query. An optional time zone argument permits interpretation of “current time” according to a particular region or offset. Without a zone, UTC is used. If the zone expression results in NULL, the function returns NULL. CURRENT_TIME is essential for dynamic computations requiring awareness of the execution moment from the perspective of civil time.
+
+---
+SECTION: EXTRACT – RETRIEVING TIME COMPONENTS
+
+EXTRACT isolates individual components from a TIME expression. Supported parts include HOUR, MINUTE, SECOND, MILLISECOND, and MICROSECOND. Lower-order precision is truncated rather than rounded—extracting SECOND drops fractional seconds, extracting MINUTE drops seconds, and so on. EXTRACT enables analytics requiring granular breakdowns such as traffic peaks by hour, latency profiling, or event-stream feature engineering.
+
+---
+SECTION: FORMAT_TIME – PRODUCING HUMAN-READABLE TIME STRINGS
+
+FORMAT_TIME takes a TIME value and a format string containing percent‑prefixed format elements and produces a STRING representation. Elements such as %H (24‑hour), %I (12‑hour), %M (minute), %S (second), and %R (HH:MM) provide flexible control over output formatting. This is widely used in reporting, logs, dashboards, and external integrations requiring standardized time display.
+
+---
+SECTION: PARSE_TIME – CONVERTING TEXT INTO TIME VALUES
+
+PARSE_TIME transforms a STRING into a TIME by applying a format model. The format elements must align with the structure and position of the input text. Missing fields default to 00:00:00.0. Case and whitespace rules are forgiving: names are case‑insensitive, and whitespace patterns may vary without affecting parsing. Overlapping elements resolve by last-applied precedence. The function supports AM/PM interpretation through %p, while %P is not supported. This parsing mechanism is crucial when ingesting CSVs, logs, timestamps without dates, or text-based user inputs.
+
+---
+SECTION: TIME – CONSTRUCTING TIME VALUES
+
+The TIME constructor forms TIME values from discrete hour, minute, and second components, or derives them from TIMESTAMP or DATETIME objects by stripping date information. When converting from a TIMESTAMP, the constructor interprets the instant in a provided time zone—or UTC if none is specified—yielding the corresponding civil time-of-day. When converting from DATETIME, only the time portion is preserved. This enables consistent normalization of timestamps or datetime values into pure time-of-day semantics.
+
+---
+SECTION: TIME_ADD – ADDING INTERVALS TO TIME
+
+TIME_ADD shifts a TIME value forward by an INTERVAL expressed in MICROSECOND, MILLISECOND, SECOND, MINUTE, or HOUR units. Unlike date-based arithmetic, TIME arithmetic wraps cyclically: values exceeding 24 hours roll over to the beginning of the next civil day, and negative results wrap into the preceding day. For example, adding an hour to 23:30:00 yields 00:30:00. This cyclic behavior supports event windows, recurring schedules, and modular time calculations.
+
+---
+SECTION: TIME_DIFF – BOUNDARY-BASED DIFFERENCE
+
+TIME_DIFF computes how many unit boundaries (seconds, minutes, hours, etc.) lie between two TIME values. It behaves analogously to datetime and timestamp differences but ignores date context entirely. Differences may be negative when the end_time precedes the start_time. Boundary-based calculations make TIME_DIFF suitable for evaluating elapsed time, analyzing intraday intervals, or modeling time-based latency patterns. Overflow protection prevents invalid microsecond differences.
+
+---
+SECTION: TIME_SUB – SUBTRACTING INTERVALS FROM TIME
+
+TIME_SUB mirrors TIME_ADD, shifting the TIME backward by a specified INTERVAL. Results wrap naturally across midnight boundaries in reverse—subtracting one hour from 00:30:00 becomes 23:30:00. TIME_SUB is important for retrospective windowing, calculating earlier time offsets, and constructing relative time computations.
+
+---
+SECTION: TIME_TRUNC – ROUNDING DOWN TO A GRANULARITY
+
+TIME_TRUNC truncates a TIME to the beginning of a specified granularity such as HOUR, MINUTE, SECOND, MILLISECOND, or MICROSECOND. Truncation always moves backward to the earliest possible moment in that unit. For example, truncating 15:30:42.918 to MINUTE results in 15:30:00. TIME_TRUNC supports precision alignment needed for time-grouped analysis, normalization, or time‑bucket aggregation.
+
+---
+END OF DOCUMENT

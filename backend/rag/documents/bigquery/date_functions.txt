@@ -1,0 +1,72 @@
+
+BIGQUERY DATE FUNCTIONS 
+
+This document provides a deeply contextual, narrative-style exploration of GoogleSQL for BigQuery’s DATE functions. It follows the same semantic structure as the previous documents, ensuring high‑density embeddings for Retrieval‑Augmented Generation (RAG). Each section is self-contained, explanatory, and structured for conceptual retrieval.
+
+---
+SECTION: OVERVIEW OF BIGQUERY DATE FUNCTIONS
+
+BigQuery provides a comprehensive suite of functions to manipulate, analyze, and transform DATE values. These functions allow construction of calendar dates, arithmetic operations such as addition or subtraction of intervals, comparison across boundaries such as weeks or ISO years, extraction of specific date components, formatting into human-readable text, parsing from textual inputs, and interpreting Unix‑epoch‑based day counts. BigQuery’s DATE semantics rely on the proleptic Gregorian calendar, following precise rules regarding leap years, week boundaries, and ISO 8601 definitions. These functions form the backbone of temporal analytics in data warehousing, event modeling, reporting workflows, and time-based partitions.
+
+---
+SECTION: CURRENT_DATE
+
+CURRENT_DATE returns the current calendar date as a DATE object. If no argument is provided, the default time zone is UTC. A STRING-based time zone expression may also be supplied to compute the date according to a particular region or offset. The function evaluates the current date once at the start of the query, ensuring deterministic behavior across all references within that query. If the time zone expression evaluates to NULL, the result is NULL. CURRENT_DATE is essential for generating dynamic reports, defining recency filters, or computing rolling-window analytics.
+
+---
+SECTION: DATE – CONSTRUCTING OR EXTRACTING A DATE
+
+The DATE function produces a DATE value by either explicitly supplying year, month, and day integers or extracting the date portion from a DATETIME or TIMESTAMP. When extracting from TIMESTAMP, BigQuery optionally applies a specified time zone; otherwise UTC is assumed. Extraction discards time-of-day and fractional components, yielding a pure civil date. This function unifies disparate temporal formats into a consistent, calendar-based representation and is foundational in normalizing heterogeneous time data.
+
+---
+SECTION: DATE_ADD – ADDING INTERVALS
+
+DATE_ADD adds an INTERVAL to a DATE using calendar-aware components such as DAY, WEEK, MONTH, QUARTER, and YEAR. DAY and WEEK additions are straightforward integer shifts, while MONTH, QUARTER, and YEAR follow special logic near month-end boundaries. For example, adding one month to January 31 yields February’s last day, not an invalid date. This ensures intuitive results when working with uneven month lengths. DATE_ADD is frequently used in retention calculations, billing cycles, and forecasting.
+
+---
+SECTION: DATE_DIFF – BOUNDARY-BASED DIFFERENCE
+
+DATE_DIFF computes the number of boundary transitions between two dates according to the selected granularity. The difference reflects how many times the chosen unit boundary is crossed moving from start_date to end_date. For DAY, it is a simple difference in days; for WEEK or WEEKDAY-based WEEK qualifiers, boundaries align with the specified weekday. ISOWEEK and ISOYEAR rely on ISO 8601 rules, where weeks begin on Monday and ISO years may shift relative to Gregorian years. DATE_DIFF returns negative values if the end_date precedes the start_date. This function is vital for temporal grouping, aging analysis, and compliance reporting.
+
+---
+SECTION: DATE_FROM_UNIX_DATE – DAY OFFSET INTERPRETATION
+
+DATE_FROM_UNIX_DATE interprets an INT64 value as days since the Unix epoch (1970‑01‑01). It produces a DATE corresponding to that offset. This is used to convert system-internal epoch-based counters into human-readable dates and acts as the inverse of UNIX_DATE.
+
+---
+SECTION: DATE_SUB – SUBTRACTING INTERVALS
+
+DATE_SUB mirrors DATE_ADD but subtracts an INTERVAL instead. It supports the same interval parts and uses identical month-end handling rules. This is used for computing historical windows, look-back periods, and retroactive reporting anchors.
+
+---
+SECTION: DATE_TRUNC – TRUNCATING TO GRANULARITY
+
+DATE_TRUNC anchors a DATE, DATETIME, or TIMESTAMP to the beginning of a chosen granularity such as DAY, WEEK, MONTH, QUARTER, YEAR, ISOWEEK, or ISOYEAR. For TIMESTAMP, truncation can optionally be performed using a specific time zone, affecting how civil time is interpreted. WEEK defaults to Sunday-based weeks unless_WEEKDAY is provided; ISOWEEK uses ISO 8601 rules. Truncation aligns timestamps with business cycles, reporting periods, and calendar boundaries. The function always returns the rounded-down start of the granularity.
+
+---
+SECTION: EXTRACT – COMPONENT RETRIEVAL
+
+EXTRACT retrieves specific components of a DATE, such as DAY, DAYOFYEAR, WEEK, WEEKDAY-based WEEK values, ISOWEEK, MONTH, QUARTER, YEAR, or ISOYEAR. WEEK results vary depending on starting weekday definitions, while ISOWEEK and ISOYEAR use ISO 8601 logic. EXTRACT enables granular feature creation for modeling, classification, and trend analysis.
+
+---
+SECTION: FORMAT_DATE – STRING FORMATTING
+
+FORMAT_DATE converts a DATE into a STRING using a format model composed of percent-prefixed format elements such as %Y, %m, %b, or %x. Format strings allow producing localized or structured output for reporting, labeling, and display. FORMAT_DATE preserves Unicode and supports a wide range of layout and localization scenarios.
+
+---
+SECTION: LAST_DAY – CALENDAR PERIOD ENDING
+
+LAST_DAY returns the final DATE of the specified period—commonly the last day of the month. If no date_part is provided, MONTH is assumed. Other granularities such as QUARTER, YEAR, WEEK, ISOWEEK, and ISOYEAR compute their corresponding final boundaries according to Gregorian or ISO rules. LAST_DAY simplifies financial reporting, month-end rollovers, and cycle summarization.
+
+---
+SECTION: PARSE_DATE – STRING PARSING INTO DATE
+
+PARSE_DATE converts a textual STRING into a DATE, enforcing strict correspondence between format_string and date_string. All elements must align positionally unless the format allows inference (e.g., %F). Unspecified fields default to 1970‑01‑01 components. Names such as weekdays and months are case-insensitive. Whitespace rules allow flexible spacing. ISO and non‑ISO format elements do not mix, and the last-in-order element takes precedence in overlapping contexts. Numeric values following %G require separators due to parsing constraints. This function is essential for ingesting raw textual data from logs, CSVs, or external systems.
+
+---
+SECTION: UNIX_DATE – DAYS SINCE EPOCH
+
+UNIX_DATE converts a DATE into an INT64 representing the number of days since 1970‑01‑01. It is the inverse of DATE_FROM_UNIX_DATE and supports efficient indexing, partitioning, and storage of dates as compact numeric values.
+
+---
+END OF DOCUMENT

@@ -1,0 +1,6 @@
+{
+  "String": "STRING",
+  "Decimal": "BIGNUMERIC",
+  "Boolean": "BOOL",
+  "Datetime": "TIMESTAMP"
+}

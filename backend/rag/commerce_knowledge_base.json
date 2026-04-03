@@ -1,0 +1,324 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "domain": "commerce",
+    "description": "Professional commerce field descriptions for RAG knowledge base",
+    "how_to_add": "Add a new object to the 'entries' array below. Required fields: field_name, domain, sub_domain, data_type, constraints, professional_description. Optional: examples, related_fields, compliance_notes."
+  },
+
+  "entries": [
+
+    {
+      "field_name": "customer_email",
+      "domain": "commerce",
+      "sub_domain": "customer",
+      "data_type": "VARCHAR(255)",
+      "constraints": "UNIQUE, NOT NULL, INDEX",
+      "professional_description": "Serves as the primary unique identifier and communication endpoint for a customer account, conforming to RFC 5321 address standards. Used across transactional notifications, authentication workflows, and CRM integrations. Indexed for high-frequency lookup operations during checkout, login, and marketing automation pipelines.",
+      "examples": "john.doe@company.com",
+      "related_fields": "customer_id, username, contact_phone",
+      "compliance_notes": "Subject to GDPR Article 6 processing lawfulness requirements."
+    },
+
+    {
+      "field_name": "customer_id",
+      "domain": "commerce",
+      "sub_domain": "customer",
+      "data_type": "BIGINT / UUID",
+      "constraints": "PRIMARY KEY, NOT NULL, AUTO_INCREMENT",
+      "professional_description": "Surrogate primary key uniquely identifying each registered customer entity within the commerce platform. Auto-generated at account creation and immutable thereafter. Referenced as a foreign key across orders, wishlists, addresses, payment methods, and audit logs to maintain referential integrity.",
+      "examples": "10045, a3f2c1b0-...",
+      "related_fields": "email, first_name, last_name, created_at",
+      "compliance_notes": "PII anchor — deletion must cascade per right-to-erasure requests."
+    },
+
+    {
+      "field_name": "customer_type",
+      "domain": "commerce",
+      "sub_domain": "customer",
+      "data_type": "ENUM / VARCHAR(50)",
+      "constraints": "NOT NULL, DEFAULT 'retail'",
+      "professional_description": "Classifies the customer account tier, distinguishing between retail consumers, wholesale buyers, B2B partners, and VIP segments. Drives pricing rule evaluation, discount eligibility, tax exemption logic, and personalised catalogue visibility in multi-channel commerce setups.",
+      "examples": "retail, wholesale, b2b, vip",
+      "related_fields": "price_group_id, tax_class_id",
+      "compliance_notes": ""
+    },
+
+    {
+      "field_name": "first_name",
+      "domain": "commerce",
+      "sub_domain": "customer",
+      "data_type": "VARCHAR(100)",
+      "constraints": "NOT NULL",
+      "professional_description": "The given name component of a customer's legal or preferred identity, used in personalised communications, shipping labels, and customer service workflows. Stored separately from last_name to support flexible salutation formatting across regional and cultural conventions.",
+      "examples": "John, María, Wei",
+      "related_fields": "last_name, full_name, salutation",
+      "compliance_notes": "PII — apply data retention and anonymisation policy on account deletion."
+    },
+
+    {
+      "field_name": "last_name",
+      "domain": "commerce",
+      "sub_domain": "customer",
+      "data_type": "VARCHAR(100)",
+      "constraints": "NOT NULL",
+      "professional_description": "The family name component of a customer's identity, used in conjunction with first_name to construct full display names for invoices, shipping manifests, and account correspondence. Indexed to support customer search and deduplication workflows.",
+      "examples": "Doe, García, Zhang",
+      "related_fields": "first_name, full_name, customer_id",
+      "compliance_notes": "PII — apply data retention and anonymisation policy on account deletion."
+    },
+
+    {
+      "field_name": "contact_phone",
+      "domain": "commerce",
+      "sub_domain": "customer",
+      "data_type": "VARCHAR(20)",
+      "constraints": "NULLABLE, INDEX",
+      "professional_description": "The customer's primary contact telephone number in E.164 international format, used for order delivery coordination, two-factor authentication, and customer service escalations. Nullable to accommodate digital-only customer registrations where phone capture is not mandated.",
+      "examples": "+14155552671, +447911123456",
+      "related_fields": "customer_email, shipping_address_id",
+      "compliance_notes": "PII — subject to GDPR and TCPA consent requirements for marketing use."
+    },
+
+    {
+      "field_name": "sku",
+      "domain": "commerce",
+      "sub_domain": "product",
+      "data_type": "VARCHAR(100)",
+      "constraints": "UNIQUE, NOT NULL, INDEX",
+      "professional_description": "Stock Keeping Unit — a merchant-defined alphanumeric identifier that uniquely distinguishes each sellable product variant within the catalogue. Acts as the canonical reference in purchase orders, warehouse management systems, and third-party marketplace feeds. Must remain stable across the product lifecycle to preserve historical order line integrity.",
+      "examples": "SHIRT-BLU-M, ELEC-TV-55-4K",
+      "related_fields": "product_id, barcode, upc",
+      "compliance_notes": ""
+    },
+
+    {
+      "field_name": "product_name",
+      "domain": "commerce",
+      "sub_domain": "product",
+      "data_type": "VARCHAR(255)",
+      "constraints": "NOT NULL",
+      "professional_description": "The merchant-defined display title of a product as presented on storefront pages, order confirmations, and marketplace listings. Subject to SEO optimisation guidelines and character limits enforced by downstream channel integrations. Versioned via product revision history to preserve accuracy of historical order line descriptions.",
+      "examples": "Men's Classic Polo Shirt – Navy Blue, 55-inch 4K Smart TV",
+      "related_fields": "sku, product_id, short_description",
+      "compliance_notes": ""
+    },
+
+    {
+      "field_name": "product_status",
+      "domain": "commerce",
+      "sub_domain": "product",
+      "data_type": "ENUM / VARCHAR(30)",
+      "constraints": "NOT NULL, DEFAULT 'draft', INDEX",
+      "professional_description": "Represents the lifecycle publication state of a product record, controlling its visibility across storefront, API catalogue, and search indexes. Transitions follow a defined state machine: draft → review → active → archived. Active records are eligible for indexing, promotions, and order placement; archived records are retained for historical reporting only.",
+      "examples": "draft, active, discontinued, archived",
+      "related_fields": "visibility, catalog_start_date, catalog_end_date",
+      "compliance_notes": ""
+    },
+
+    {
+      "field_name": "msrp",
+      "domain": "commerce",
+      "sub_domain": "product",
+      "data_type": "DECIMAL(12,4)",
+      "constraints": "NULLABLE",
+      "professional_description": "Manufacturer's Suggested Retail Price — the recommended consumer selling price set by the product manufacturer or brand. Stored at four decimal precision to accommodate multi-currency rounding strategies. Used as a reference ceiling for discount display logic and comparative pricing widgets on product detail pages.",
+      "examples": "299.9900, 1499.0000",
+      "related_fields": "base_price, sale_price, cost_price",
+      "compliance_notes": "Advertised price regulations vary by jurisdiction (FTC, EU Price Indication Directive)."
+    },
+
+    {
+      "field_name": "base_price",
+      "domain": "commerce",
+      "sub_domain": "product",
+      "data_type": "DECIMAL(12,4)",
+      "constraints": "NOT NULL, DEFAULT 0.0000",
+      "professional_description": "The standard selling price of a product before application of customer-tier discounts, promotional rules, or tax calculations. Denominated in the store's base currency and used as the input value for all price computation engines. Modifications trigger price change audit events for compliance and competitive monitoring.",
+      "examples": "49.9900, 999.0000",
+      "related_fields": "msrp, sale_price, cost_price, currency_code",
+      "compliance_notes": ""
+    },
+
+    {
+      "field_name": "order_id",
+      "domain": "commerce",
+      "sub_domain": "order",
+      "data_type": "BIGINT / UUID",
+      "constraints": "PRIMARY KEY, NOT NULL",
+      "professional_description": "Immutable surrogate key uniquely identifying a sales transaction within the order management system. Generated at order placement and propagated to fulfilment, payment gateway webhooks, and customer-facing correspondence. UUID variant preferred in distributed architectures to prevent enumeration attacks.",
+      "examples": "ORD-20240315-00012, uuid-...",
+      "related_fields": "customer_id, cart_id, invoice_id",
+      "compliance_notes": ""
+    },
+
+    {
+      "field_name": "order_status",
+      "domain": "commerce",
+      "sub_domain": "order",
+      "data_type": "ENUM / VARCHAR(50)",
+      "constraints": "NOT NULL, DEFAULT 'pending', INDEX",
+      "professional_description": "Represents the current fulfilment lifecycle state of a sales order, transitioning through defined stages from placement to resolution. Triggers downstream workflow automations including warehouse pick lists, shipping label generation, customer notification events, and revenue recognition entries in the ERP system.",
+      "examples": "pending, confirmed, processing, shipped, delivered, cancelled, refunded",
+      "related_fields": "payment_status, shipment_status, updated_at",
+      "compliance_notes": ""
+    },
+
+    {
+      "field_name": "grand_total",
+      "domain": "commerce",
+      "sub_domain": "order",
+      "data_type": "DECIMAL(15,4)",
+      "constraints": "NOT NULL, DEFAULT 0.0000",
+      "professional_description": "The final invoiced amount payable by the customer, aggregating subtotal, applied taxes, shipping charges, and discounts. Stored in the order's base currency at four decimal precision for multi-currency compliance. This value is the authoritative figure for payment capture, revenue reporting, and VAT/GST return submissions.",
+      "examples": "149.9900, 2399.0000",
+      "related_fields": "subtotal, tax_amount, shipping_amount, discount_amount, base_currency_code",
+      "compliance_notes": "Must align with payment gateway capture amount to prevent chargebacks."
+    },
+
+    {
+      "field_name": "subtotal",
+      "domain": "commerce",
+      "sub_domain": "order",
+      "data_type": "DECIMAL(15,4)",
+      "constraints": "NOT NULL, DEFAULT 0.0000",
+      "professional_description": "The aggregate pre-tax, pre-shipping value of all order line items at their applicable sold prices. Calculated as the sum of each line item's unit price multiplied by quantity, after item-level discounts. Serves as the base for tax computation engines and order-level promotion evaluation.",
+      "examples": "120.0000, 1899.9600",
+      "related_fields": "grand_total, tax_amount, discount_amount",
+      "compliance_notes": ""
+    },
+
+    {
+      "field_name": "qty_on_hand",
+      "domain": "commerce",
+      "sub_domain": "inventory",
+      "data_type": "DECIMAL(12,4)",
+      "constraints": "NOT NULL, DEFAULT 0",
+      "professional_description": "The real-time physical stock quantity available at a given warehouse or fulfilment location for a specific SKU. Updated via inventory adjustment transactions, GRN receipts, and order reservation events. Decimal precision supports fractional unit commodities. Serves as the source-of-truth for Available-to-Promise calculations and low-stock alert thresholds.",
+      "examples": "150.0000, 0.7500",
+      "related_fields": "qty_reserved, qty_available, reorder_point, location_id",
+      "compliance_notes": ""
+    },
+
+    {
+      "field_name": "reorder_point",
+      "domain": "commerce",
+      "sub_domain": "inventory",
+      "data_type": "DECIMAL(12,4)",
+      "constraints": "NOT NULL, DEFAULT 0",
+      "professional_description": "The minimum stock threshold at which an automated or manual replenishment order must be initiated to prevent stockout conditions. Calculated from historical sales velocity, supplier lead time, and safety stock buffers. Evaluated during nightly inventory health checks and real-time depletion events.",
+      "examples": "20.0000, 5.0000",
+      "related_fields": "qty_on_hand, qty_available, supplier_id, lead_time_days",
+      "compliance_notes": ""
+    },
+
+    {
+      "field_name": "payment_method_code",
+      "domain": "commerce",
+      "sub_domain": "payment",
+      "data_type": "VARCHAR(64)",
+      "constraints": "NOT NULL, INDEX",
+      "professional_description": "Machine-readable identifier for the payment instrument or gateway used to settle an order transaction. Maps to payment provider configurations for routing, fee calculation, and reconciliation workflows. Values are defined in the payment method registry and must align with PSP integration contracts.",
+      "examples": "stripe_card, paypal_express, bank_transfer, buy_now_pay_later",
+      "related_fields": "payment_status, transaction_id, gateway_response_code",
+      "compliance_notes": "PCI-DSS scope — no raw card data stored alongside this field."
+    },
+
+    {
+      "field_name": "transaction_id",
+      "domain": "commerce",
+      "sub_domain": "payment",
+      "data_type": "VARCHAR(255)",
+      "constraints": "UNIQUE, NULLABLE, INDEX",
+      "professional_description": "The external reference identifier returned by the payment service provider upon successful transaction authorisation or capture. Essential for dispute resolution, chargeback management, and automated reconciliation with bank settlement reports. Null until a gateway response is received.",
+      "examples": "pi_3OqXXXLkdIwHu7ix, PAYID-ABC123",
+      "related_fields": "payment_method_code, order_id, gateway_response_code",
+      "compliance_notes": "Retain per PCI-DSS audit trail requirements (minimum 1 year)."
+    },
+
+    {
+      "field_name": "payment_status",
+      "domain": "commerce",
+      "sub_domain": "payment",
+      "data_type": "ENUM / VARCHAR(50)",
+      "constraints": "NOT NULL, DEFAULT 'pending', INDEX",
+      "professional_description": "Tracks the current settlement state of a payment transaction throughout its lifecycle from authorisation to final resolution. Drives order release logic in the fulfilment engine — only orders in 'captured' status are eligible for warehouse processing. State transitions are logged to the payment audit trail.",
+      "examples": "pending, authorised, captured, failed, refunded, partially_refunded",
+      "related_fields": "transaction_id, order_id, payment_method_code",
+      "compliance_notes": ""
+    },
+
+    {
+      "field_name": "shipping_address_id",
+      "domain": "commerce",
+      "sub_domain": "shipping",
+      "data_type": "BIGINT",
+      "constraints": "FOREIGN KEY → address.id, NOT NULL",
+      "professional_description": "Foreign key reference to the normalised address entity designated as the delivery destination for an order shipment. Decouples address data from order records enabling address reuse, address book management, and carrier validation workflows. Snapshots of the address at order time should be preserved separately for audit compliance.",
+      "examples": "4821",
+      "related_fields": "billing_address_id, street, city, postal_code, country_code",
+      "compliance_notes": "GDPR — address constitutes personal data; apply retention policy."
+    },
+
+    {
+      "field_name": "tracking_number",
+      "domain": "commerce",
+      "sub_domain": "shipping",
+      "data_type": "VARCHAR(100)",
+      "constraints": "NULLABLE, INDEX",
+      "professional_description": "Carrier-issued parcel tracking reference assigned upon shipment dispatch. Enables end-to-end logistics visibility for warehouse operations, customer self-service tracking portals, and carrier SLA monitoring dashboards. Null prior to fulfilment dispatch; populated via carrier API webhook or manual entry.",
+      "examples": "1Z999AA10123456784, 9400111899223397765906",
+      "related_fields": "carrier_code, shipment_id, shipped_at",
+      "compliance_notes": ""
+    },
+
+    {
+      "field_name": "coupon_code",
+      "domain": "commerce",
+      "sub_domain": "promotions",
+      "data_type": "VARCHAR(32)",
+      "constraints": "NULLABLE, INDEX",
+      "professional_description": "Merchant-issued alphanumeric voucher code entered by a customer during checkout to activate a promotional pricing rule or discount entitlement. Validated against the active promotion registry at cart evaluation time, subject to usage limits, validity windows, and customer segment eligibility criteria.",
+      "examples": "SUMMER20, NEWCUST10",
+      "related_fields": "discount_amount, promotion_id, usage_count",
+      "compliance_notes": ""
+    },
+
+    {
+      "field_name": "created_at",
+      "domain": "commerce",
+      "sub_domain": "audit",
+      "data_type": "TIMESTAMP / DATETIME",
+      "constraints": "NOT NULL, DEFAULT CURRENT_TIMESTAMP",
+      "professional_description": "UTC timestamp automatically recorded at row insertion denoting the precise moment the entity was created within the system. Immutable post-creation and used as the authoritative reference for chronological reporting, SLA calculations, data retention policy enforcement, and audit trail reconstruction.",
+      "examples": "2024-03-15 14:22:07 UTC",
+      "related_fields": "updated_at, created_by, version",
+      "compliance_notes": "Retain per applicable data retention schedule."
+    },
+
+    {
+      "field_name": "updated_at",
+      "domain": "commerce",
+      "sub_domain": "audit",
+      "data_type": "TIMESTAMP / DATETIME",
+      "constraints": "NOT NULL, DEFAULT CURRENT_TIMESTAMP ON UPDATE",
+      "professional_description": "UTC timestamp automatically refreshed on every UPDATE operation, capturing the last modification time of the record. Fundamental for incremental ETL synchronisation strategies, optimistic concurrency control, cache invalidation triggers, and change-data-capture pipelines feeding data warehouses or event buses.",
+      "examples": "2024-03-16 09:05:33 UTC",
+      "related_fields": "created_at, updated_by, version",
+      "compliance_notes": ""
+    },
+
+    {
+      "field_name": "is_deleted",
+      "domain": "commerce",
+      "sub_domain": "audit",
+      "data_type": "TINYINT(1) / BOOLEAN",
+      "constraints": "NOT NULL, DEFAULT 0, INDEX",
+      "professional_description": "Soft-delete flag implementing logical deletion semantics to preserve referential integrity and historical audit trails while hiding records from active application queries. All standard repository queries must filter on is_deleted = 0. Physical deletion is deferred to scheduled purge jobs governed by the data retention policy.",
+      "examples": "0 (active), 1 (deleted)",
+      "related_fields": "deleted_at, deleted_by",
+      "compliance_notes": "GDPR erasure: set flag and anonymise PII fields; do not hard-delete."
+    }
+
+  ]
+}

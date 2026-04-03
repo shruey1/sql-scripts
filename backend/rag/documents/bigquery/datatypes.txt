@@ -1,0 +1,163 @@
+
+BIGQUERY DATA TYPES 
+
+This document provides a comprehensive, narrative-style overview of GoogleSQL for BigQuery data types. It is designed specifically for Retrieval-Augmented Generation (RAG) systems, ensuring that each section is semantically dense, highly descriptive, and fully self-contained so that embeddings capture meaningful conceptual relationships.
+
+---
+SECTION: OVERVIEW OF BIGQUERY DATA TYPES
+
+BigQuery supports a diverse set of data types intended to represent structured, semi-structured, temporal, spatial, and numeric information. Each data type adheres to rules governing nullability, ordering, grouping, comparability, and storage size. BigQuery treats all native data types as nullable unless explicitly constrained in schemas or expressions. This system-level design ensures flexibility in data modelling while maintaining consistent semantics across querying, storage, and computation.
+
+---
+SECTION: ARRAY TYPE
+
+An ARRAY in BigQuery represents an ordered list containing zero or more values of the same underlying, non-array data type. Arrays cannot directly contain other arrays, meaning nested arrays must be structured through intermediate STRUCT types. Within queries, BigQuery treats NULL arrays and empty arrays as distinct logical entities. A NULL array represents the absence of a value, while an empty array represents a present but zero-element collection. However, when writing data to tables, BigQuery converts NULL arrays into empty arrays. Although arrays can contain NULL elements during query evaluation, BigQuery prohibits returning arrays with NULL elements directly in the final query output. Arrays may be constructed through literals, functions like GENERATE_ARRAY, or from SELECT expressions. They play an essential role in denormalized schemas and analytical queries.
+
+---
+SECTION: BOOLEAN TYPE
+
+The Boolean data type represents logical truth values, encoded as TRUE or FALSE, and allows NULL to indicate unknown or absent logical state. BigQuery sorts Boolean values in a strict order where NULL precedes FALSE, which in turn precedes TRUE. Boolean values are useful for conditional logic, filtering, and representing binary categorical attributes.
+
+---
+SECTION: BYTES TYPE
+
+The BYTES type stores variable-length binary data. It is well-suited for encoded values, hashed identifiers, and non-text binary formats. Its logical size consists of a 2-byte prefix plus the number of bytes in the payload. This data type operates independently of character encoding rules, distinguishing it from STRING.
+
+---
+SECTION: DATE TYPE
+
+The DATE type represents a calendar date using the proleptic Gregorian calendar. It contains no time-of-day component and no timezone information. DATE values occupy 8 logical bytes and are appropriate for scenarios such as daily reporting, billing cycles, or historical timelines.
+
+---
+SECTION: DATETIME TYPE
+
+DATETIME stores a combined calendar date and time-of-day without any timezone awareness. This type models human-perceived, clock-based timestamps rather than absolute or location-sensitive time measures. It is appropriate for contexts such as appointment scheduling or logging local times at the moment an event occurred.
+
+---
+SECTION: GEOGRAPHY TYPE
+
+The GEOGRAPHY type models spatial information as sets of points, linestrings, or polygons on the Earth's surface. BigQuery’s geography values comply with the OGC (Open Geospatial Consortium) standards. Their storage size depends on the number of vertices, calculated as a 16-byte base plus 24 bytes per vertex. GEOGRAPHY values cannot be ordered or grouped directly but can be compared for equality using dedicated functions such as ST_Equals.
+
+---
+SECTION: INTERVAL TYPE
+
+INTERVAL represents a span or duration of time rather than a specific moment. It is used when expressing differences between dates, times, or timestamps. Interval values are 16 bytes and carry structured components such as years, months, days, or finer-grained sub-second elements.
+
+---
+SECTION: JSON TYPE
+
+BigQuery’s JSON type stores JSON-formatted data, preserving both structure and schema flexibility. Internally, BigQuery calculates its logical size using the UTF-8 encoding of the canonicalized JSON string. JSON values are semi-structured, meaning they do not participate in ordering or grouping except through explicit JSON functions. They are essential for ingestion of NoSQL-style payloads and nested data.
+
+---
+SECTION: NUMERIC TYPES
+
+BigQuery supports several numeric categories:
+
+1. INT64 represents 64-bit signed integers and includes aliases such as INT, SMALLINT, INTEGER, BIGINT, TINYINT, and BYTEINT. It occupies 8 logical bytes.
+2. NUMERIC provides exact precision up to 38 digits with 9 decimal places, using 16 bytes of storage. It is suitable for financial computations requiring deterministic accuracy.
+3. BIGNUMERIC extends NUMERIC precision to approximately 76.8 digits, stored in 32 bytes, enabling exceptionally large or highly precise numerical operations.
+4. FLOAT64 represents double-precision floating-point numbers following IEEE 754. Floating-point ordering is unique, with NaN, infinities, and signed zero following specific ranking rules.
+
+---
+SECTION: RANGE TYPE
+
+The RANGE type models continuous intervals spanning either DATE, DATETIME, or TIMESTAMP types. Comparisons prioritize lower bounds first and rely on upper bounds only when lower bounds match. NULL or UNBOUNDED boundaries affect ordering and equality semantics and are treated specially to ensure predictable comparisons.
+
+---
+SECTION: STRING TYPE
+
+STRING stores variable-length UTF-8 character data. Logical size is computed as 2 bytes plus the UTF-8 encoded length of the content. STRING fields support collation, enabling locale-sensitive comparisons and sorting. They are frequently used in text analytics, identifiers, descriptions, and categorical labeling.
+
+---
+SECTION: STRUCT TYPE
+
+STRUCT represents a composite, ordered collection of named or unnamed fields. Each field may possess its own data type including nested STRUCTs or ARRAYs. STRUCT values allow complex, hierarchical data modeling directly within BigQuery. Equality comparisons occur field-by-field, and only equality is supported, not greater-than or less-than comparisons.
+
+---
+SECTION: TIME TYPE
+
+TIME represents a time-of-day independent of any date or timezone. Stored as 8 bytes, it is used in applications such as daily schedules, time ranges, clock-based events, or log timestamps referencing only time components.
+
+---
+SECTION: TIMESTAMP TYPE
+
+TIMESTAMP represents an absolute moment in time, independent of timezone. Internally, BigQuery handles timestamps relative to UTC. This type is ideal for event-time analytics, temporal ordering, and time-based windowing in streaming data.
+
+---
+SECTION: NULLABILITY, ORDERING, GROUPING, AND COMPARISON
+
+All BigQuery data types are nullable. Ordering is supported for all types except ARRAY, STRUCT, GEOGRAPHY, and JSON. Grouping is supported for all except GEOGRAPHY and JSON, with special rules for floating-point values, arrays, and structs. Comparability aligns closely with ordering rules but excludes ARRAY, JSON, and GEOGRAPHY. RANGE types obey specialized comparison rules focusing on lower and upper bounds.
+
+---
+SECTION: PARAMETERIZED DATA TYPES
+
+Some types allow explicit constraints through parameters. STRING(n), BYTES(n), NUMERIC(p,s), and BIGNUMERIC(p,s) can restrict lengths or precision. These constraints apply when storing or assigning values but do not propagate through expressions. Parameterization ensures schema-level control while supporting flexible computation.
+
+This document continues the semantically rich, narrative-style descriptions of advanced Google BigQuery data types. Each section is designed for Retrieval-Augmented Generation (RAG) systems, ensuring dense, standalone explanations optimized for semantic embeddings.
+
+---
+SECTION: DATE TYPE
+
+The DATE type in BigQuery represents a pure Gregorian calendar date without any association to a time-of-day or a time zone. Although a DATE value such as 2024-05-10 might appear to refer to a specific 24‑hour period, it actually maps to different real-world time window interpretations depending on the time zone applied during conversion to timestamps or other types. Daylight Saving Time (DST) transitions may cause the local interpretation of a DATE to correspond to a day shorter or longer than 24 hours. DATE values support a canonical format of YYYY-MM-DD, where month and day may be expressed as one or two digits. Dates follow a valid range from year 0001 to year 9999. This type is ideal for civil, billing, calendrical, or reporting contexts where times are irrelevant.
+
+---
+SECTION: DATETIME TYPE
+
+The DATETIME type merges a Gregorian calendar date with a civil time-of-day, capturing hours, minutes, seconds, and optionally microsecond-level fractional seconds. It explicitly excludes time zone semantics, meaning that a DATETIME value such as 2024‑03‑10T02:30:00 simply reflects how a human might read a clock, regardless of geographical region. When converting to absolute time, time zones and DST handling are applied separately. DATETIME follows a structure combining a civil_date_part and an optional time_part, using spaces or the T/t indicator between components. Fields may include fractional seconds up to six decimal places. DATETIME values are highly suitable when modeling local schedules, events, appointments, or scenarios where “what the clock showed” matters more than universal time.
+
+---
+SECTION: GEOGRAPHY TYPE
+
+The GEOGRAPHY type stores geospatial data aligned with the OGC Simple Features Specification (SFS). It supports geometric constructs—points, linestrings, and polygons—defined on the Earth’s WGS84 reference ellipsoid. Each geographic object is expressed using textual forms such as POINT(x y), LINESTRING(...), or POLYGON(...), representing precise longitude/latitude locations and shapes. Compound objects like MULTIPOINT, MULTILINESTRING, MULTIPOLYGON, and GEOMETRYCOLLECTION allow representation of complex spatial arrangements. BigQuery ensures these geometries form “simple” configurations with no overlapping regions unless explicitly intended. Empty geographies (such as POINT EMPTY or GEOMETRYCOLLECTION EMPTY) normalize to the same canonical empty structure. The system can simplify compound inputs into equivalent minimal geometries—for example, a GEOMETRYCOLLECTION of two points becomes a MULTIPOINT. GEOGRAPHY values participate in specialized spatial functions through the ST_ family of functions but do not support ordering, grouping, or general comparison operations.
+
+---
+SECTION: INTERVAL TYPE
+
+INTERVAL values represent durations composed of multiple civil date and time units, rather than points in time. They include components such as years, months, days, hours, minutes, seconds, and fractional seconds up to microsecond precision. Intervals are expressed using canonical syntax like Y-M D H:M:S.F, with optional signs. Because INTERVALs encode variable-length civil durations (such as months, which vary between 28–31 days), they do not map directly to a fixed number of seconds. INTERVALs can be constructed using: 
+1) a single datetime part (e.g., INTERVAL 3 MONTH), or 
+2) a datetime part range (e.g., INTERVAL '2-11 28 16:15:14' YEAR TO SECOND). 
+Supported components include YEAR, QUARTER, MONTH, WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND, and MICROSECOND. Interval arithmetic is context-dependent, and literal construction enforces strict formatting. INTERVALs are useful when expressing durations, time differences, or civil-based shifts.
+
+---
+SECTION: JSON TYPE
+
+The JSON type allows BigQuery to store semi-structured data while applying canonicalization rules that maintain logical consistency. JSON preserves booleans, null, strings, array ordering, and nested structure while discarding unnecessary whitespace. JSON numbers may include large integers beyond signed 64-bit ranges up to the unsigned 64‑bit limit, as well as floating‑point values representable within the FLOAT64 domain. However, key ordering in JSON objects is not guaranteed, and duplicate keys are reduced by keeping only the first. JSON supports up to 500 nested levels. Canonicalization ensures that semantically identical JSON values produce consistent storage representations for reliable comparison through JSON functions.
+
+---
+SECTION: NUMERIC TYPES – INTEGER, DECIMAL, AND FLOATING POINT
+
+BigQuery exposes a robust suite of numeric types suited for exact arithmetic, high‑precision analytics, and approximate numerical computation.
+
+INTEGER TYPES: INT64 and aliases (INT, SMALLINT, INTEGER, BIGINT, TINYINT, BYTEINT) represent whole numbers without fractional components. They cover the full +/- 9.22e18 range typical of signed 64‑bit integers.
+
+DECIMAL TYPES: NUMERIC (precision 38, scale 9) and BIGNUMERIC (approx. 76 digits precision, scale 38) support exact decimal representation suitable for financial, scientific, and regulatory workloads. These values are never approximated, and overflows or excessive scale trigger explicit OUT_OF_RANGE errors. Parameterized forms such as NUMERIC(P,S) and BIGNUMERIC(P,S) allow constraining precision for schema‑sensitive workflows.
+
+FLOATING POINT: FLOAT64 provides approximate numeric representation via IEEE‑754 double‑precision semantics. FLOAT64 supports NaN, +inf, -inf, and both positive and negative zero. Floating‑point arithmetic may produce nondeterministic results in aggregation due to accumulation order. Some inputs, such as overflow scenarios, produce errors unless explicit functions (e.g., IEEE_DIVIDE) return non‑finite values. FLOAT64 is ideal when performance and dynamic range outweigh strict precision requirements.
+
+---
+SECTION: RANGE TYPE
+
+The RANGE type models a contiguous interval between two DATE, DATETIME, or TIMESTAMP values. Ranges have inclusive lower bounds and exclusive upper bounds, denoted as [lower, upper). Either bound may be NULL or UNBOUNDED. Literals use the form RANGE<T> '[lower, upper)', ensuring the contained type matches the range’s declared template. RANGE values support comparisons based on boundary evaluation but do not allow arithmetic operations. They are useful for partitioning timelines, managing scheduling windows, or representing bins over temporal dimensions.
+
+---
+SECTION: STRING TYPE
+
+The STRING type stores variable‑length Unicode text encoded in UTF‑8. All string operations focus on Unicode characters rather than raw bytes, ensuring functions such as LENGTH or SUBSTR reflect human-readable character counts. Code points determine lexical ordering. Strings cannot implicitly convert to BYTES; explicit casting is required, and invalid UTF‑8 byte sequences raise errors. Parameterized forms like STRING(L) enforce maximum character length constraints. STRING types support collation and extensive text-processing functions.
+
+---
+SECTION: STRUCT TYPE
+
+STRUCT is a composite type allowing ordered fields, which may optionally have names. Fields may contain any data type, including ARRAYs and nested STRUCTs. STRUCTs can be declared via angle‑bracket syntax or constructed using tuple-style forms (expr1, expr2, ...). Anonymous and typed struct construction methods exist, with typed structs enforcing strict type coercion rules. STRUCT comparisons support equality semantics that compare fields in positional order while ignoring field names. STRUCTs model hierarchical and semi-structured data schemas natively within BigQuery.
+
+---
+SECTION: TIME TYPE
+
+TIME stores only time-of-day values (hours, minutes, seconds, microseconds) without association to dates or locations. It represents civil clock time ranging from 00:00:00 to 23:59:59.999999. TIME is ideal for recurring daily schedules or operations where the date component is not relevant.
+
+---
+SECTION: TIMESTAMP TYPE AND TIME ZONES
+
+The TIMESTAMP type encodes an absolute, globally consistent point in time, internally stored as microseconds since the Unix epoch. It represents the same instant everywhere, even though display formatting may differ based on local time zones. Timestamp literals may include time-zone names, offsets, or the Z designator for UTC. During conversion, BigQuery handles DST transitions, skipped hours, repeated hours, and leap‑second normalization. TIMESTAMP values bypass calendar anomalies, making them ideal for event-time indexing, logging, or temporal joins.
+
+---
+END OF DOCUMENT
