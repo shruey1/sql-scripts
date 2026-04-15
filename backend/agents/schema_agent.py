@@ -10,12 +10,31 @@ from dotenv import load_dotenv
 from langchain_openai import AzureChatOpenAI
 
 try:
-    from backend.rag.azure_rag_setup import get_search_client,  build_rag_context_block
+
+    from backend.rag.azure_rag_setup import get_search_client, build_rag_context_block
+
     RAG_AVAILABLE = True
-except ImportError:
+
+except Exception as _rag_import_err:
+
     RAG_AVAILABLE = False
+
     get_search_client = lambda: None
-    build_rag_context_block = lambda: None
+
+    build_rag_context_block = lambda *a, **kw: ""
+
+    import logging as _l
+
+    _l.getLogger(__name__).warning(
+
+        "RAG import failed — %s: %s",
+
+        type(_rag_import_err).__name__,
+
+        _rag_import_err,
+
+    )
+ 
 
 
 load_dotenv()
@@ -150,6 +169,53 @@ def _extract_namespace(request: str, db_type: str) -> dict:
     return result
  
  
+# ————————————————————
+# Logical Model Prompt
+# ————————————————————
+
+def _logical_prompt(request: str) -> str:
+    return f"""
+You are a senior data architect. Given a business description, produce a
+LOGICAL data model — engine-agnostic, no physical types, no DDL.
+
+Output ONLY valid JSON:
+{{
+  "model_type": "logical",
+  "entities": [
+    {{
+      "name": "EntityName",
+      "description": "What this entity represents",
+      "attributes": [
+        {{
+          "name": "attribute_name",
+          "description": "What this attribute stores",
+          "is_identifier": true,
+          "is_required": true
+        }}
+      ]
+    }}
+  ],
+  "relationships": [
+    {{
+      "from_entity": "EntityA",
+      "to_entity": "EntityB",
+      "label": "places",
+      "cardinality": "many-to-one"
+    }}
+  ]
+}}
+
+Rules:
+1. No SQL types — use plain English concepts (identifier, text, number, date, boolean, amount)
+2. Every entity and attribute MUST have a description
+3. Mark exactly one attribute per entity as "is_identifier": true
+4. Keep it business-facing, not technical
+
+User Request: {request}
+"""
+
+def create_logical_model(request: str, db_engine: str = "MySQL") -> dict:
+    return SchemaAgent(db_engine=db_engine).generate_logical_model(request)
 
 # ————————————————————
 # Namespace Stamping
@@ -495,12 +561,37 @@ def get_prompt_summary(request: str, db_type: str, model_type: str) -> dict:
 # ————————————————————
 # Relational Model Prompt
 # ————————————————————
-def _relational_prompt(request: str, db_type: str, rag_context: str = "") -> str:
+import json
+
+def _relational_prompt(
+    request: str,
+    db_type: str,
+    rag_context: str = "",
+    logical_model: dict | None = None
+) -> str:
+
     rag_block = f"\n{rag_context}\n" if rag_context else ""
+
+    logical_block = ""
+    if logical_model and not logical_model.get("error"):
+        logical_block = f"""
+
+LOGICAL DATA MODEL (AUTHORITATIVE SOURCE):
+
+{json.dumps(logical_model, indent=2)}
+
+INSTRUCTIONS:
+- Map EVERY entity above to exactly ONE table.
+- Preserve ALL attributes as columns unless normalization requires decomposition.
+- Preserve ALL relationships and convert them into foreign keys.
+- Do NOT invent new entities or attributes.
+- Surrogate keys may be added where necessary, following the naming convention.
+"""
 
     return f"""
 You are a senior database architect specialising in 3NF relational models.
 {rag_block}
+{logical_block}
 
 Target database: {db_type}
 
@@ -565,6 +656,7 @@ Output ONLY valid JSON:
 }}
 
 Use the RAG KNOWLEDGE BASE CONTEXT above (if provided) to enrich descriptions.
+Follow the LOGICAL DATA MODEL strictly if provided.
 
 User Request: {request}
 """
@@ -572,12 +664,39 @@ User Request: {request}
 # ————————————————————
 # Analytical Model Prompt
 # ————————————————————
-def _analytical_prompt(request: str, db_type: str, rag_context: str = "") -> str:
+import json
+
+def _analytical_prompt(
+    request: str,
+    db_type: str,
+    rag_context: str = "",
+    logical_model: dict | None = None
+) -> str:
+
     rag_block = f"\n{rag_context}\n" if rag_context else ""
+
+    logical_block = ""
+    if logical_model and not logical_model.get("error"):
+        logical_block = f"""
+
+LOGICAL DATA MODEL (AUTHORITATIVE SOURCE):
+
+{json.dumps(logical_model, indent=2)}
+
+INSTRUCTIONS:
+- Use this logical model as the basis for your STAR SCHEMA.
+- Identify FACT tables from transactional or event-based entities.
+- Identify DIMENSION tables from descriptive, lookup, or master data entities.
+- Derive MEASURES from numeric, aggregatable attributes.
+- Preserve all business relationships by converting them into fact-to-dimension foreign keys.
+- Do NOT invent new entities or attributes.
+- Surrogate keys may be added where required, following naming standards.
+"""
 
     return f"""
 You are a senior data warehouse architect specialising in STAR SCHEMA modelling.
 {rag_block}
+{logical_block}
 
 Target: {db_type}
 
@@ -612,7 +731,7 @@ CRITICAL RULES:
 
 Output ONLY valid JSON:
 
-{{ 
+{{
   "model_type": "analytical",
   "schema_pattern": "star",
   "db_type": "{db_type}",
@@ -687,6 +806,9 @@ Output ONLY valid JSON:
   ]
 }}
 
+Follow the LOGICAL DATA MODEL strictly if provided.
+Use the RAG KNOWLEDGE BASE CONTEXT above (if provided) to enrich descriptions.
+
 User Request: {request}
 """
 
@@ -720,60 +842,132 @@ Existing Model:
 # ————————————————————
 # SchemaAgent Class
 # ————————————————————
-
 class SchemaAgent:
-
     def __init__(self, db_engine: str = "MySQL"):
         self.llm = _get_llm(temperature=0.1)
         self.db_type = db_engine or os.getenv("DATABASE_TYPE", "MySQL")
 
-    def generate_relational_model(self, request: str) -> dict:
-
+    def generate_logical_model(self, request: str) -> dict:
         if not self.llm:
-
             return {"error": "LLM not configured"}
 
-        # Fetch RAG context — pass empty string if RAG not configured
+        return _invoke_llm(self.llm, _logical_prompt(request))
 
+    def generate_relational_model(
+    self,
+    request: str,
+    logical_model: dict | None = None
+) -> dict:
+
+        if not self.llm:
+            return {"error": "LLM not configured"}
+
+        # Fetch RAG context — default empty
         rag_context = ""
 
-        if RAG_AVAILABLE:
+        logger.info("RAG_AVAILABLE flag: %s", RAG_AVAILABLE)
 
+        if RAG_AVAILABLE:
             client = get_search_client()
+            logger.info("RAG search client: %s", client)
 
             if client:
-
-                # Build placeholder tables from request for initial RAG query
-
-                # (no columns yet — use table-level concepts only)
-
+                # Build RAG context using words > 4 characters as queries
                 rag_context = build_rag_context_block(
-
                     [{"name": w, "columns": []} for w in request.split() if len(w) > 4],
-
                     client,
-
                 )
+            else:
+                logger.warning(
+                    "RAG ✗ — get_search_client() returned None. "
+                    "Check AZURE_SEARCH_ENDPOINT and AZURE_SEARCH_ADMIN_KEY in .env"
+                )
+        else:
+            logger.warning(
+                "RAG ✗ — RAG_AVAILABLE is False. "
+                "Import of get_search_client/build_rag_context_block failed at startup"
+            )
 
-        model = _invoke_llm(self.llm, _relational_prompt(request, self.db_type, rag_context))
+        # Log RAG behaviour
+        if rag_context:
+            logger.info("RAG ✓ — context injected (%d chars)", len(rag_context))
+            logger.info("=" * 60)
+            logger.info("RAG CONTEXT EXTRACTED:\n%s", rag_context)
+            logger.info("=" * 60)
+        else:
+            logger.warning("RAG ✗ — no context retrieved, LLM generating from scratch")
 
+        # ✅ Build relational prompt FIRST
+        relational_prompt = _relational_prompt(
+            request=request,
+            db_type=self.db_type,
+            rag_context=rag_context,
+            logical_model=logical_model,
+        )
+
+        # ✅ Log the relational prompt
+        logger.info("=" * 80)
+        logger.info("RELATIONAL PROMPT SENT TO LLM:")
+        logger.info(relational_prompt)
+        logger.info("=" * 80)
+
+        # Invoke LLM
+        model = _invoke_llm(self.llm, relational_prompt)
+
+        # Stamp namespace
         namespace = _extract_namespace(request, self.db_type)
-
         return _stamp_namespace(model, namespace, self.db_type)
- 
 
-    def generate_analytical_model(self, request: str) -> dict:
+    def generate_analytical_model(self,request: str,logical_model: dict | None = None,) -> dict:
         if not self.llm:
             return {"error": "LLM not configured"}
+
+        # Fetch RAG context — default empty
         rag_context = ""
+
+        logger.info("RAG_AVAILABLE flag: %s", RAG_AVAILABLE)
+
         if RAG_AVAILABLE:
             client = get_search_client()
+            logger.info("RAG search client: %s", client)
+
             if client:
                 rag_context = build_rag_context_block(
                     [{"name": w, "columns": []} for w in request.split() if len(w) > 4],
                     client,
                 )
-        model = _invoke_llm(self.llm, _analytical_prompt(request, self.db_type, rag_context))
+            else:
+                logger.warning(
+                    "RAG ✗ — get_search_client() returned None. "
+                    "Check AZURE_SEARCH_ENDPOINT and AZURE_SEARCH_ADMIN_KEY in .env"
+                )
+        else:
+            logger.warning(
+                "RAG ✗ — RAG_AVAILABLE is False. "
+                "Import of get_search_client/build_rag_context_block failed at startup"
+            )
+
+        # Log RAG behaviour
+        if rag_context:
+            logger.info("RAG ✓ — context injected (%d chars)", len(rag_context))
+            logger.info("=" * 60)
+            logger.info("RAG CONTEXT EXTRACTED:\n%s", rag_context)
+            logger.info("=" * 60)
+        else:
+            logger.warning("RAG ✗ — no context retrieved, LLM generating from scratch")
+
+        # Invoke LLM with analytical prompt (logical model aware)
+        model = _invoke_llm(
+            self.llm,
+            _analytical_prompt(
+                request=request,
+                db_type=self.db_type,
+                rag_context=rag_context,
+                logical_model=logical_model,
+            ),
+        )
+
+        # Stamp namespace
         namespace = _extract_namespace(request, self.db_type)
         return _stamp_namespace(model, namespace, self.db_type)
 
@@ -786,70 +980,77 @@ class SchemaAgent:
         result["_changes"] = changes
         return result
 
-    def process_create(self, request: str, model_type: str = "both") -> dict:
+    def process_create(self,request: str,model_type: str = "both",logical_model: dict | None = None,) -> dict:
         result = {}
 
         if model_type in ("relational", "both"):
-            result["relational_model"] = self.generate_relational_model(request)
+            result["relational_model"] = self.generate_relational_model(
+                request,
+                logical_model,
+            )
 
         if model_type in ("analytical", "both"):
-            result["analytical_model"] = self.generate_analytical_model(request)
+            result["analytical_model"] = self.generate_analytical_model(
+                request,
+                logical_model,
+            )
 
         return result
 
     def process_modify(self, request: str, existing_model: dict) -> dict:
-
         result = {}
-
         all_changes = {}
 
         if "relational_model" in existing_model:
-
-            modified = self.apply_modification(existing_model["relational_model"], request)
-
+            modified = self.apply_modification(
+                existing_model["relational_model"], request
+            )
             all_changes = modified.pop("_changes", {})
-
             result["relational_model"] = modified
 
         if "analytical_model" in existing_model:
-
-            modified = self.apply_modification(existing_model["analytical_model"], request)
+            modified = self.apply_modification(
+                existing_model["analytical_model"], request
+            )
 
             if not all_changes:
-
                 all_changes = modified.pop("_changes", {})
-
             else:
-
                 modified.pop("_changes", None)
 
             result["analytical_model"] = modified
 
         if not result:
-
             modified = self.apply_modification(existing_model, request)
-
             all_changes = modified.pop("_changes", {})
 
             if existing_model.get("model_type") == "analytical":
-
                 result["analytical_model"] = modified
-
             else:
-
                 result["relational_model"] = modified
 
         result["_changes"] = all_changes
-
         return result
+
  
 
 # ————————————————————
 # Convenience Functions
 # ————————————————————
 
-def create_schema(request: str, model_type: str = "both", db_engine: str = "MySQL") -> dict:
-    return SchemaAgent(db_engine=db_engine).process_create(request, model_type=model_type)
+from typing import Optional, Dict
+
+def create_schema(
+    request: str,
+    model_type: str = "both",
+    db_engine: str = "MySQL",
+    logical_model: Optional[Dict] = None
+) -> Dict:
+    return SchemaAgent(db_engine=db_engine).process_create(
+        request,
+        model_type=model_type,
+        logical_model=logical_model
+    )
 
 def modify_schema(request: str, existing_model: dict, db_engine: str = "MySQL") -> dict:
     return SchemaAgent(db_engine=db_engine).process_modify(request, existing_model)

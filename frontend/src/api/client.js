@@ -32,6 +32,13 @@ export function generateModel(
   });
 }
 
+export function generateLogicalModel(userQuery, dbEngine) {
+  return post("/workflow/logical", {
+    user_query: userQuery,
+    db_engine: dbEngine || "MySQL",
+  });
+}
+
 export function validateAndGenerateSQL(dataModel, operation) {
   return post("/workflow/validate", {
     data_model: dataModel,

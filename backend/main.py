@@ -63,16 +63,19 @@ class GenerateRequest(BaseModel):
     existing_model: Optional[Dict[str, Any]] = None
     model_type: Optional[str] = "both"
     db_engine: Optional[str] = ""
+    logical_model: Optional[Dict[str, Any]] = None  # New field to accept logical model
 
 
 class ValidateRequest(BaseModel):
     data_model: Dict[str, Any]
     operation: str = "CREATE"
+    apply_partitioning: bool = False  # New field to control partitioning in SQL generation
 
 
 class ApproveRequest(BaseModel):
     data_model: Dict[str, Any]
     operation: str = "CREATE"
+    apply_partitioning: bool = False  # New field to control partitioning in SQL generation
 
 
 class FeedbackRequest(BaseModel):
@@ -85,6 +88,9 @@ class ERDRequest(BaseModel):
     sql: str
     title: Optional[str] = "Entity Relationship Diagram"
 
+class LogicalModelRequest(BaseModel):
+    user_query: str
+    db_engine: Optional[str] = "MySQL"
 
 class ERDFromModelRequest(BaseModel):
     data_model: Dict[str, Any]
@@ -128,6 +134,30 @@ def prompt_summary(req: PromptSummaryRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/workflow/logical")
+def logical_model(req: LogicalModelRequest):
+    """
+    Step 1: Generate a logical (engine-agnostic) data model for user review.
+    """
+    try:
+        from backend.agents.schema_agent import create_logical_model
+
+        result = create_logical_model(
+            req.user_query,
+            db_engine=req.db_engine or "MySQL"
+        )
+
+        return {
+            "status": "success",
+            "timestamp": datetime.utcnow().isoformat(),
+            "logical_model": result
+        }
+
+    except Exception as e:
+        logger.exception("Error in /workflow/logical")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/workflow/generate")
 def generate(req: GenerateRequest):
     try:
@@ -137,8 +167,15 @@ def generate(req: GenerateRequest):
             existing_model=req.existing_model,
             model_type=req.model_type or "both",
             db_engine=req.db_engine or "",
+            logical_model=req.logical_model,
         )
-        return {"status": "success", "timestamp": datetime.utcnow().isoformat(), **result}
+        changes = result.pop("_changes", {}) if req.operation == "MODIFY" else {}
+        return {
+        "status": "success",
+        "timestamp": datetime.utcnow().isoformat(),
+        "changes": changes,
+        **result
+        }
     except Exception as e:
         logger.exception("Error in /workflow/generate")
         raise HTTPException(status_code=500, detail=str(e))
