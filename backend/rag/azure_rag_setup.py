@@ -143,28 +143,117 @@ def _get_embedding(text: str, client: AzureOpenAI) -> List[float]:
 # SEARCH CLIENT (USED BY RUNTIME)
 # ════════════════════════════════════════════════════════════════
 
-def get_search_client() -> Optional[SearchClient]:
-    endpoint = os.getenv("AZURE_SEARCH_ENDPOINT")
-    key = os.getenv("AZURE_SEARCH_ADMIN_KEY")
-    index = os.getenv("INDEX_NAME", "commerce-schema-index")
+def upload_custom_kb(custom_kb: dict, index_name: str = "custom-kb-index") -> Optional[SearchClient]:
+    """
+    Upload custom knowledge base to Azure Search.
+    Creates index if needed, uploads documents, returns search client.
+    """
+    log.info("Starting custom KB upload process...")
 
-    if not (endpoint and key):
-        log.warning("RAG disabled: missing environment variables.")
+    if not custom_kb:
+        log.error("Custom KB is None or empty")
         return None
+
+    if not AZURE_SEARCH_ENDPOINT or not AZURE_SEARCH_ADMIN_KEY:
+        log.error("Azure Search credentials not configured: endpoint=%s, key=%s",
+                 bool(AZURE_SEARCH_ENDPOINT), bool(AZURE_SEARCH_ADMIN_KEY))
+        return None
+
+    entries = custom_kb.get("entries", [])
+    if not entries:
+        log.error("Custom KB has no 'entries' array or it's empty")
+        return None
+
+    log.info("Uploading custom KB with %d entries to index '%s'", len(entries), index_name)
 
     try:
-        return SearchClient(endpoint=endpoint, index_name=index,
-                            credential=AzureKeyCredential(key))
-    except Exception as exc:
-        log.warning("Could not create SearchClient: %s", exc)
+        credential = AzureKeyCredential(AZURE_SEARCH_ADMIN_KEY)
+        index_client = SearchIndexClient(endpoint=AZURE_SEARCH_ENDPOINT, credential=credential)
+        log.info("Azure Search client initialized successfully")
+    except Exception as e:
+        log.error("Failed to initialize Azure Search client: %s", e)
         return None
+
+    # Create index if needed
+    try:
+        # Try to create, ignore if exists
+        create_index_for_custom_kb(index_client, index_name)
+        log.info("Index creation/check completed for '%s'", index_name)
+    except ResourceExistsError:
+        log.info("Index '%s' already exists", index_name)
+    except Exception as e:
+        log.error("Failed to create index '%s': %s", index_name, e)
+        return None
+
+    # Prepare documents
+    try:
+        documents = prepare_documents(entries, None)  # No embeddings for custom KB
+        log.info("Prepared %d documents for upload", len(documents))
+    except Exception as e:
+        log.error("Failed to prepare documents: %s", e)
+        return None
+
+    # Upload
+    try:
+        search_client = SearchClient(endpoint=AZURE_SEARCH_ENDPOINT, index_name=index_name, credential=credential)
+        upload_documents(search_client, documents, batch_size=10)
+        log.info("Custom KB uploaded successfully to '%s'", index_name)
+        return search_client
+    except Exception as e:
+        log.error("Failed to upload custom KB: %s", e)
+        return None
+
+
+def create_index_for_custom_kb(index_client: SearchIndexClient, index_name: str):
+    """Create index for custom KB (simpler, no vectors)."""
+    fields = [
+        SimpleField(name="id", type=SearchFieldDataType.String, key=True, filterable=True),
+        SearchableField(name="field_name", type=SearchFieldDataType.String, filterable=True, sortable=True),
+        SimpleField(name="domain", type=SearchFieldDataType.String, filterable=True, facetable=True),
+        SimpleField(name="sub_domain", type=SearchFieldDataType.String, filterable=True, facetable=True),
+        SearchableField(name="professional_description", type=SearchFieldDataType.String, analyzer_name="en.microsoft"),
+        SimpleField(name="data_type", type=SearchFieldDataType.String, filterable=True),
+        SearchableField(name="constraints", type=SearchFieldDataType.String),
+        SearchableField(name="examples", type=SearchFieldDataType.String),
+        SearchableField(name="related_fields", type=SearchFieldDataType.String),
+        SearchableField(name="compliance_notes", type=SearchFieldDataType.String),
+    ]
+
+    # Try to create index with semantic search, fall back to basic search if not available
+    try:
+        semantic_config = SemanticConfiguration(
+            name="custom-semantic",
+            prioritized_fields=SemanticPrioritizedFields(
+                title_field=SemanticField(field_name="field_name"),
+                content_fields=[SemanticField(field_name="professional_description")],
+                keywords_fields=[
+                    SemanticField(field_name="domain"),
+                    SemanticField(field_name="sub_domain"),
+                    SemanticField(field_name="constraints"),
+                ],
+            ),
+        )
+
+        index = SearchIndex(
+            name=index_name,
+            fields=fields,
+            semantic_search=SemanticSearch(configurations=[semantic_config]),
+        )
+        log.info("Creating custom KB index with semantic search")
+
+    except Exception as e:
+        log.warning("Semantic search not available, creating basic index: %s", e)
+        index = SearchIndex(name=index_name, fields=fields)
+
+    index_client.create_index(index)
+    log.info("Created custom KB index '%s'", index_name)
 
 
 # ════════════════════════════════════════════════════════════════
 # RAG CONTEXT BUILDER
 # ════════════════════════════════════════════════════════════════
 
-def build_rag_context_block(tables: List[dict], search_client: SearchClient, top_k: int = 3) -> str:
+def build_rag_context_block(tables: List[dict], search_client: SearchClient, top_k: int = 3, semantic_config_name: str = "commerce-semantic") -> str:
     if not tables or not search_client:
         return ""
 
@@ -188,10 +277,11 @@ def build_rag_context_block(tables: List[dict], search_client: SearchClient, top
             seen_queries.add(query)
 
             try:
+                # Try semantic search first
                 results = list(search_client.search(
                     search_text=query,
                     query_type=QueryType.SEMANTIC,
-                    semantic_configuration_name="commerce-semantic",
+                    semantic_configuration_name=semantic_config_name,
                     top=top_k,
                     select=[
                         "field_name",
@@ -202,9 +292,25 @@ def build_rag_context_block(tables: List[dict], search_client: SearchClient, top
                         "sub_domain",
                     ],
                 ))
-            except Exception as exc:
-                log.warning("RAG query failed for '%s': %s", query, exc)
-                continue
+            except Exception as semantic_exc:
+                log.warning("Semantic search failed for '%s', trying regular search: %s", query, semantic_exc)
+                try:
+                    # Fall back to regular search
+                    results = list(search_client.search(
+                        search_text=query,
+                        top=top_k,
+                        select=[
+                            "field_name",
+                            "professional_description",
+                            "constraints",
+                            "related_fields",
+                            "compliance_notes",
+                            "sub_domain",
+                        ],
+                    ))
+                except Exception as regular_exc:
+                    log.warning("Regular search also failed for '%s': %s", query, regular_exc)
+                    continue
 
             for r in results:
                 part = (

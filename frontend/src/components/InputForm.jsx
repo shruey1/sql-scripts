@@ -1,8 +1,7 @@
 // components/InputForm.jsx
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { Btn, ErrorBanner } from "./ui/Primitives";
-import { getPromptSummary } from "../api/client";
 
 const C = {
   surface: "#13161e",
@@ -63,8 +62,11 @@ const DB_ENGINES = [
 // ── Summary UI ─────────────────────────────────────────────────────────────
 
 function SummaryRow({ label, value, accent }) {
+  const lines = value.split('\n').filter(line => line.trim());
+  const isList = lines.some(line => line.trim().startsWith('-'));
+
   return (
-    <div style={{ marginBottom: 12 }}>
+    <div style={{ marginBottom: 16 }}>
       <p
         style={{
           fontSize: 11,
@@ -72,91 +74,71 @@ function SummaryRow({ label, value, accent }) {
           color: C.textMuted,
           textTransform: "uppercase",
           letterSpacing: "0.06em",
-          marginBottom: 3,
+          marginBottom: 8,
         }}
       >
         {label}
       </p>
-      <p style={{ fontSize: 12, color: accent || C.textDim, lineHeight: 1.5 }}>
-        {value}
-      </p>
+      {isList ? (
+        <ul
+          style={{
+            fontSize: 12,
+            color: accent || C.text,
+            lineHeight: 1.6,
+            margin: 0,
+            paddingLeft: 20,
+            listStyleType: 'disc',
+          }}
+        >
+          {lines.map((line, i) => (
+            <li key={i} style={{ marginBottom: 4 }}>
+              {line.replace(/^- /, '')}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p style={{ fontSize: 12, color: accent || C.textDim, lineHeight: 1.5 }}>
+          {value}
+        </p>
+      )}
     </div>
   );
 }
 
-function PromptSummaryPanel({ summary, loading }) {
-  if (loading) {
-    return (
-      <div style={{ padding: "20px 16px", textAlign: "center" }}>
-        <div
-          style={{
-            width: 20,
-            height: 20,
-            border: "2px solid " + C.border,
-            borderTopColor: C.accent,
-            borderRadius: "50%",
-            animation: "spin 0.8s linear infinite",
-            margin: "0 auto 10px",
-          }}
-        />
-        <p style={{ fontSize: 12, color: C.textMuted }}>Loading rules…</p>
-      </div>
-    );
-  }
+const RELATIONAL_PROMPT = `
 
-  if (!summary) {
-    return (
-      <div style={{ padding: "20px 16px" }}>
-        <p style={{ fontSize: 12, color: C.textMuted, lineHeight: 1.6 }}>
-          Select a database engine and model type to see which generation rules
-          will be applied.
-        </p>
-      </div>
-    );
-  }
+- Applies 3rd Normal Form (3NF) unless the domain clearly benefits from denormalisation.
+- Every table has a primary key.
+- Expresses all foreign-key relationships explicitly.
+- Use standard SQL data types (VARCHAR, INT, BIGINT, DECIMAL, DATE, TIMESTAMP, BOOLEAN, TEXT, UUID).
+- Include NOT NULL, UNIQUE, and CHECK constraints where appropriate.
+- Outputs structured JSON only.
+`;
 
-  const modelLabel = {
-    both: "Relational + Analytical",
-    relational: "Relational only",
-    analytical: "Analytical only",
-  }[summary.model_type] || summary.model_type;
+const ANALYTICAL_PROMPT = `
 
+- Designs a star schema with one or more central fact tables surrounded by dimension tables.
+- Fact tables hold measurable, numeric metrics (measures) and foreign keys to dimensions.
+- Dimension tables hold descriptive attributes (slowly changing dimensions are acceptable).
+- Includes a DATE/TIME dimension if time-series analysis is relevant.
+- Uses surrogate integer keys (e.g. customer_key, date_key) as primary keys in dimension tables.
+- Outputs structured JSON only.
+`;
+
+function PromptSummaryPanel({ modelType }) {
   return (
     <div style={{ padding: "4px 0" }}>
-      <SummaryRow label="Engine" value={summary.db_engine} accent={C.accent} />
-      <SummaryRow
-        label="Model type"
-        value={modelLabel}
-        accent={C.green}
-      />
-
-      {summary.normal_form !== "N/A" && (
-        <SummaryRow
-          label="Normalisation"
-          value={summary.normal_form}
-          accent={C.amber}
-        />
+      {(modelType === "both" || modelType === "relational") && (
+        <div style={{ marginBottom: 20 }}>
+          <SummaryRow label="Relational Model Rules" value={RELATIONAL_PROMPT.trim()} />
+        </div>
       )}
 
-      {summary.schema_pattern !== "N/A" && (
-        <SummaryRow
-          label="Schema pattern"
-          value={summary.schema_pattern}
-          accent={C.purple}
-        />
+      {(modelType === "both" || modelType === "analytical") && (
+        <div>
+          <SummaryRow label="Analytical Model Rules" value={ANALYTICAL_PROMPT.trim()} />
+        </div>
       )}
-
-      <SummaryRow label="Engine rules" value={summary.engine_rules} />
-
-      {summary.scd_applied && (
-        <SummaryRow
-          label="SCD strategy"
-          value={summary.scd_summary}
-          accent={C.teal}
-        />
-      )}
-
-      
     </div>
   );
 }
@@ -171,27 +153,8 @@ export function InputForm({ onSubmit, loading, error }) {
   const [validationMode, setValidationMode] = useState("auto");
   const [modelType, setModelType] = useState("both");
   const [dbEngine, setDbEngine] = useState("");
-
-  const [summary, setSummary] = useState(null);
-  const [summaryLoading, setSummaryLoading] = useState(false);
-
-  const debounceRef = useRef(null);
-
-  // Fetch summary automatically
-  useEffect(() => {
-    clearTimeout(debounceRef.current);
-
-    debounceRef.current = setTimeout(() => {
-      setSummaryLoading(true);
-
-      getPromptSummary(prompt || "data model", dbEngine || "MySQL", modelType)
-        .then((res) => setSummary(res.summary))
-        .catch(() => setSummary(null))
-        .finally(() => setSummaryLoading(false));
-    }, 400);
-
-    return () => clearTimeout(debounceRef.current);
-  }, [dbEngine, modelType]);
+  const [customKb, setCustomKb] = useState(null);
+  const [customKbFileName, setCustomKbFileName] = useState("");
 
   // File upload
   function handleFile(e) {
@@ -211,6 +174,23 @@ export function InputForm({ onSubmit, loading, error }) {
     reader.readAsText(file);
   }
 
+  function handleKbFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setCustomKbFileName(file.name);
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        setCustomKb(JSON.parse(ev.target.result));
+      } catch {
+        setCustomKb({ raw: ev.target.result });
+      }
+    };
+    reader.readAsText(file);
+  }
+
   const canSubmit =
     prompt.trim().length > 0 &&
     (mainTab === "new" || uploadedSchema !== null);
@@ -223,8 +203,9 @@ export function InputForm({ onSubmit, loading, error }) {
       operation: mainTab === "new" ? "CREATE" : "MODIFY",
       existingModel: mainTab === "modify" ? uploadedSchema : null,
       validationMode: validationMode,
-      modelType: modelType,
+      modelType: "both",
       dbEngine: dbEngine,
+      customKb: customKb,
     });
   }
 
@@ -238,6 +219,7 @@ export function InputForm({ onSubmit, loading, error }) {
         margin: "0 auto",
       }}
     >
+    <div>  
       {/* LEFT SIDE — FORM */}
       <div style={{ flex: 1, minWidth: 0 }}>
         {/* Tabs */}
@@ -322,7 +304,7 @@ export function InputForm({ onSubmit, loading, error }) {
           />
 
           {/* MODEL TYPE SELECTOR */}
-          <div style={{ marginTop: 20 }}>
+          {/* <div style={{ marginTop: 20 }}>
             <p
               style={{
                 color: C.textMuted,
@@ -332,42 +314,9 @@ export function InputForm({ onSubmit, loading, error }) {
               }}
             >
               Model type to generate
-            </p>
+            </p> */}
 
-            <div style={{ display: "flex", gap: 10 }}>
-              <button
-                style={modelTypeStyle(modelType === "both", C.accent)}
-                onClick={() => setModelType("both")}
-              >
-                <div style={{ fontSize: 18, marginBottom: 4 }}>⬡</div>
-                <div>Both</div>
-                <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>
-                  Relational + Analytical
-                </div>
-              </button>
-
-              <button
-                style={modelTypeStyle(modelType === "relational", C.green)}
-                onClick={() => setModelType("relational")}
-              >
-                <div style={{ fontSize: 18, marginBottom: 4 }}>⊞</div>
-                <div>Relational</div>
-                <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>
-                  3NF normalised
-                </div>
-              </button>
-
-              <button
-                style={modelTypeStyle(modelType === "analytical", C.purple)}
-                onClick={() => setModelType("analytical")}
-              >
-                <div style={{ fontSize: 18, marginBottom: 4 }}>✦</div>
-                <div>Analytical</div>
-                <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>
-                  Star schema
-                </div>
-              </button>
-            </div>
+            
           </div>
 
           {/* ENGINE SELECTOR */}
@@ -440,6 +389,80 @@ export function InputForm({ onSubmit, loading, error }) {
                 );
               })}
             </div>
+          </div>
+
+          {/* Custom Knowledge Base Upload */}
+          <div style={{ marginTop: 20 }}>
+            <p
+              style={{
+                color: C.textMuted,
+                fontSize: 13,
+                fontWeight: 600,
+                marginBottom: 10,
+              }}
+            >
+              Custom Knowledge Base (Optional)
+              <span
+                style={{
+                  color: C.textDim,
+                  fontWeight: 400,
+                  marginLeft: 8,
+                }}
+              >
+                Upload a JSON file with field descriptions for better schema generation
+              </span>
+            </p>
+
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                padding: "12px 16px",
+                background: C.card,
+                border:
+                  "2px dashed " +
+                  (customKb ? C.green : C.border),
+                borderRadius: 10,
+                cursor: "pointer",
+                transition: "border-color 0.2s",
+              }}
+            >
+              <span style={{ fontSize: 20 }}>
+                {customKb ? "✓" : "📚"}
+              </span>
+
+              <div>
+                <p
+                  style={{
+                    fontWeight: 600,
+                    fontSize: 13,
+                    color: customKb ? C.green : C.textDim,
+                  }}
+                >
+                  {customKbFileName || "Click to upload knowledge base JSON"}
+                </p>
+
+                {customKb && (
+                  <p
+                    style={{
+                      fontSize: 11,
+                      color: C.textMuted,
+                      marginTop: 2,
+                    }}
+                  >
+                    Knowledge base loaded successfully
+                  </p>
+                )}
+              </div>
+
+              <input
+                type="file"
+                accept=".json"
+                onChange={handleKbFile}
+                style={{ display: "none" }}
+              />
+            </label>
           </div>
 
           {/* Upload schema for modify */}
@@ -618,10 +641,7 @@ export function InputForm({ onSubmit, loading, error }) {
         </p>
 
         <div style={{ borderTop: "1px solid " + C.border, paddingTop: 16 }}>
-          <PromptSummaryPanel
-            summary={summary}
-            loading={summaryLoading}
-          />
+          <PromptSummaryPanel modelType={modelType} />
         </div>
       </div>
     </div>

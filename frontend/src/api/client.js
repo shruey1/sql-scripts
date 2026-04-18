@@ -21,7 +21,9 @@ export function generateModel(
   operation,
   existingModel,
   modelType,
-  dbEngine
+  dbEngine,
+  customKb,
+  logicalModel
 ) {
   return post("/workflow/generate", {
     user_query: userQuery,
@@ -29,13 +31,16 @@ export function generateModel(
     existing_model: existingModel || null,
     model_type: modelType || "both",
     db_engine: dbEngine || "",
+    custom_kb: customKb || null,
+    logical_model: logicalModel || null,
   });
 }
 
-export function generateLogicalModel(userQuery, dbEngine) {
+export function generateLogicalModel(userQuery, dbEngine, customKb) {
   return post("/workflow/logical", {
     user_query: userQuery,
     db_engine: dbEngine || "MySQL",
+    custom_kb: customKb || null,
   });
 }
 
@@ -43,6 +48,13 @@ export function validateAndGenerateSQL(dataModel, operation) {
   return post("/workflow/validate", {
     data_model: dataModel,
     operation: operation,
+  });
+}
+
+export function validateModel(dataModel, dbEngine) {
+  return post("/workflow/validate", {
+    data_model: dataModel,
+    db_engine: dbEngine || "MySQL",
   });
 }
 

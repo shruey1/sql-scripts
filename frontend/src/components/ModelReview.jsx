@@ -446,6 +446,7 @@ export function ModelReview({
   onAutoValidate,
   onApprove,
   onFeedback,
+  onBack,
   dbEngine,
   changes,
 }) {
@@ -685,6 +686,16 @@ return (
 
       {/* Action buttons */}
 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+  
+    <Btn
+        variant="ghost"
+        onClick={onBack}
+        style={{ marginRight: 'auto' }}
+        disabled={loading}
+      >
+        ← Logical Model
+      </Btn>
+
 
   {/* --- Existing validation / approval buttons --- */}
   {validationMode === 'auto' ? (
@@ -705,40 +716,10 @@ return (
         ✎ Suggest Changes
       </Btn>
 
-      <Btn variant="success" onClick={() => onApprove(applyPartitioning)} loading={loading}>
+      <Btn variant="success" onClick={() => onApprove(false)} loading={loading}>
         ✓ Approve &amp; Generate SQL
       </Btn>
     </>
-  )}
-
-  {/* --- NEW: Partition toggle block --- */}
-  {partitionSuggestions.length > 0 && (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        padding: '6px 12px',
-        background: C.card,
-        border: '1px solid ' + C.border,
-        borderRadius: 8
-      }}
-    >
-      <input
-        type="checkbox"
-        id="partition-toggle"
-        checked={applyPartitioning}
-        onChange={e => setApplyPartitioning(e.target.checked)}
-        style={{ cursor: 'pointer' }}
-      />
-
-      <label
-        htmlFor="partition-toggle"
-        style={{ fontSize: 12, color: C.textDim, cursor: 'pointer' }}
-      >
-        Apply partition / cluster suggestions ({partitionSuggestions.length} tables)
-      </label>
-    </div>
   )}
 
 </div>
@@ -784,16 +765,9 @@ return (
           </div>
 
           <div style={{ display: 'flex', gap: 10 }}>
-            <Btn
-              variant="ghost"
-              onClick={handleFixAll}
-              disabled={loading}
-              style={{ borderColor: C.amber + '55', color: C.amber }}
-            >
+            <Btn variant="ghost" onClick={handleFixAll} disabled={loading}
+                  style={{ borderColor: C.amber + '55', color: C.amber }}>
               ⚡ Auto-fix All
-            </Btn>
-            <Btn onClick={onAutoValidate} loading={loading} style={{ background: C.accent }}>
-              ↺ Re-validate
             </Btn>
           </div>
         </div>
@@ -900,7 +874,7 @@ return (
             loading={loading}
             disabled={!feedbackText.trim()}
           >
-            Apply Changes &amp; Generate SQL
+            Apply Changes &amp; Re-validate
           </Btn>
         </div>
       </div>
@@ -992,7 +966,7 @@ return (
 
     {/* Tab content */}
     {activeTab === 'model' && (
-      <ModelViewer dataModel={dataModel} activeTab={modelViewerKey} />
+      <ModelViewer dataModel={dataModel} activeTab={modelViewerKey} changes={changes} />
     )}
 
     {activeTab === 'erd' && <ERDPanel dataModel={dataModel} />}

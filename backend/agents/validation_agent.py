@@ -75,7 +75,65 @@ class ValidationAgent:
         if not self.llm:
             return self._basic_validation(model)
 
-        prompt = f"""
+        # Check if it's a logical model (has entities key)
+        is_logical = "entities" in model
+
+        if is_logical:
+            prompt = self._logical_validation_prompt(model)
+        else:
+            prompt = self._physical_validation_prompt(model)
+
+        try:
+            resp = self.llm.invoke(prompt)
+            raw = resp.content
+
+            logger.info("Validation raw response (first 300): %s", raw[:300])
+
+            parsed = _parse_json(raw)
+            if parsed is None:
+                logger.warning("Falling back to basic validation — could not parse LLM response")
+                return self._basic_validation(model)
+
+            # Normalize keys and types
+            parsed["is_valid"]    = bool(parsed.get("is_valid", True))
+            parsed["score"]       = int(parsed.get("score", 100 if parsed["is_valid"] else 50))
+            parsed["errors"]      = list(parsed.get("errors", []))
+            parsed["warnings"]    = list(parsed.get("warnings", []))
+            parsed["suggestions"] = list(parsed.get("suggestions", []))
+
+            return parsed
+
+        except Exception as e:
+            logger.error("LLM validation failed: %s", e)
+            return self._basic_validation(model)
+    
+    def _logical_validation_prompt(self, model: dict) -> str:
+        return f"""
+    You are an expert in logical data modeling.
+
+    Validate the following logical data model JSON for:
+
+    1. Entity completeness: Validate that every entity is well-defined and has a primary key with a clear business meaning.
+
+    2. Attribute correctness: Ensure all attributes are atomic, meaningful, and have appropriate logical data types.
+
+    You MUST respond with ONLY a valid JSON object — no markdown fences, no explanation, no preamble.
+
+    The JSON must have exactly these keys:
+    {{
+    "is_valid": true,
+    "score": 85,
+    "errors": [],
+    "warnings": ["example warning"],
+    "suggestions": ["example suggestion"]
+    }}
+
+    Logical Data Model to validate:
+    {json.dumps(model, indent=2)}
+    """
+
+    def _physical_validation_prompt(self, model: dict) -> str:
+        return f"""
 You are an expert database schema reviewer.
 
 Validate the following data model JSON for:
@@ -99,30 +157,6 @@ Data Model to validate:
 {json.dumps(model, indent=2)}
 """
 
-        try:
-            resp = self.llm.invoke(prompt)
-            raw = resp.content
-
-            logger.info("Validation raw response (first 300): %s", raw[:300])
-
-            parsed = _parse_json(raw)
-            if parsed is None:
-                logger.warning("Falling back to basic validation — could not parse LLM response")
-                return self._basic_validation(model)
-
-            # Normalize keys and types
-            parsed["is_valid"]    = bool(parsed.get("is_valid", True))
-            parsed["score"]       = int(parsed.get("score", 100 if parsed["is_valid"] else 50))
-            parsed["errors"]      = list(parsed.get("errors", []))
-            parsed["warnings"]    = list(parsed.get("warnings", []))
-            parsed["suggestions"] = list(parsed.get("suggestions", []))
-
-            return parsed
-
-        except Exception as e:
-            logger.error("Validation LLM error: %s", e)
-            return self._basic_validation(model)
-
     def _basic_validation(self, model: dict) -> dict:
         errors, warnings, suggestions = [], [], []
 
@@ -135,6 +169,44 @@ Data Model to validate:
                 "suggestions": []
             }
 
+        # Check if logical model
+        if "entities" in model:
+            entities = model.get("entities", [])
+            if not entities:
+                errors.append("Logical model has no entities.")
+
+            for entity in entities:
+                name = entity.get("name", "")
+                if not name:
+                    errors.append("Entity missing name.")
+                    continue
+
+                attributes = entity.get("attributes", [])
+                if not attributes:
+                    errors.append(f"Entity '{name}' has no attributes.")
+
+                has_pk = any(attr.get("is_identifier") for attr in attributes)
+                if not has_pk:
+                    errors.append(f"Entity '{name}' has no primary key (is_identifier attribute).")
+
+                for attr in attributes:
+                    attr_name = attr.get("name", "")
+                    if not attr_name:
+                        errors.append(f"Attribute in entity '{name}' missing name.")
+                    # Check if type is present (logical data types)
+                    if not attr.get("type"):
+                        warnings.append(f"Attribute '{attr_name}' in entity '{name}' has no type.")
+
+            score = max(0, 100 - len(errors) * 20 - len(warnings) * 5)
+            return {
+                "is_valid": len(errors) == 0,
+                "score": score,
+                "errors": errors,
+                "warnings": warnings,
+                "suggestions": suggestions,
+            }
+
+        # Physical model validation
         rel  = model.get("relational_model")
         anal = model.get("analytical_model")
 

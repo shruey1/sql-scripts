@@ -64,6 +64,7 @@ class GenerateRequest(BaseModel):
     model_type: Optional[str] = "both"
     db_engine: Optional[str] = ""
     logical_model: Optional[Dict[str, Any]] = None  # New field to accept logical model
+    custom_kb: Optional[Dict[str, Any]] = None
 
 
 class ValidateRequest(BaseModel):
@@ -91,6 +92,7 @@ class ERDRequest(BaseModel):
 class LogicalModelRequest(BaseModel):
     user_query: str
     db_engine: Optional[str] = "MySQL"
+    custom_kb: Optional[Dict[str, Any]] = None
 
 class ERDFromModelRequest(BaseModel):
     data_model: Dict[str, Any]
@@ -144,7 +146,8 @@ def logical_model(req: LogicalModelRequest):
 
         result = create_logical_model(
             req.user_query,
-            db_engine=req.db_engine or "MySQL"
+            db_engine=req.db_engine or "MySQL",
+            custom_kb=req.custom_kb
         )
 
         return {
@@ -168,6 +171,7 @@ def generate(req: GenerateRequest):
             model_type=req.model_type or "both",
             db_engine=req.db_engine or "",
             logical_model=req.logical_model,
+            custom_kb=req.custom_kb,
         )
         changes = result.pop("_changes", {}) if req.operation == "MODIFY" else {}
         return {

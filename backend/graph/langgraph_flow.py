@@ -60,6 +60,7 @@ def run_generate_model(
     model_type: str = 'both',       # 'relational' | 'analytical' | 'both'
     db_engine: str = '',            # explicit engine from UI (may be empty)
     logical_model: Optional[Dict] = None,
+    custom_kb: Optional[Dict] = None,
 ) -> dict:
     """
     Step 1: classify + generate JSON data model only.
@@ -73,7 +74,7 @@ def run_generate_model(
     engine = detect_db_engine(user_input, db_engine)
     try:
         if op == 'CREATE':
-            data_model = create_schema(user_input, model_type=model_type, db_engine=engine, logical_model=logical_model)
+            data_model = create_schema(user_input, model_type=model_type, db_engine=engine, logical_model=logical_model, custom_kb=custom_kb)
         else:
             data_model = modify_schema(user_input, existing_model or {}, db_engine=engine)
         # Stamp db_type onto the model so sql_generator reads it later

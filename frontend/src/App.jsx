@@ -59,7 +59,7 @@ export default function App() {
   // STEP 0 → STEP 1 (Generate Logical Model)
   function handleGenerate(opts) {
     wrap(async () => {
-      const res = await generateLogicalModel(opts.userQuery, opts.dbEngine);
+      const res = await generateLogicalModel(opts.userQuery, opts.dbEngine, opts.customKb);
       setLogicalModel(res.logical_model);
       setPendingOpts(opts);
       setDbEngine(opts.dbEngine || 'MySQL');
@@ -75,7 +75,9 @@ export default function App() {
         'CREATE',
         null,
         modelType,
-        pendingOpts.dbEngine
+        pendingOpts.dbEngine,
+        pendingOpts.customKb,
+        approvedLogicalModel
       );
 
       const engine = res.db_engine || pendingOpts.dbEngine || 'MySQL';
@@ -194,6 +196,7 @@ export default function App() {
             onAutoValidate={handleAutoValidate}
             onApprove={handleApprove}
             onFeedback={handleFeedback}
+            onBack={() => setStep(1)}
             changes={changes}
           />
         )}

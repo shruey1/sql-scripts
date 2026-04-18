@@ -11,7 +11,7 @@ from langchain_openai import AzureChatOpenAI
 
 try:
 
-    from backend.rag.azure_rag_setup import get_search_client, build_rag_context_block
+    from backend.rag.azure_rag_setup import get_search_client, build_rag_context_block, upload_custom_kb
 
     RAG_AVAILABLE = True
 
@@ -19,9 +19,11 @@ except Exception as _rag_import_err:
 
     RAG_AVAILABLE = False
 
-    get_search_client = lambda: None
+    get_search_client = lambda *args, **kwargs: None
 
     build_rag_context_block = lambda *a, **kw: ""
+
+    upload_custom_kb = lambda *a, **kw: None
 
     import logging as _l
 
@@ -214,8 +216,8 @@ Rules:
 User Request: {request}
 """
 
-def create_logical_model(request: str, db_engine: str = "MySQL") -> dict:
-    return SchemaAgent(db_engine=db_engine).generate_logical_model(request)
+def create_logical_model(request: str, db_engine: str = "MySQL", custom_kb: dict | None = None) -> dict:
+    return SchemaAgent(db_engine=db_engine).generate_logical_model(request, custom_kb)
 
 # ————————————————————
 # Namespace Stamping
@@ -278,6 +280,9 @@ def _engine_hints(db_type: str) -> str:
     hints = {
         "BigQuery": """
 Engine-specific rules for BigQuery:
+-Table names MUST be fully qualified as 'project_id.dataset_id.table_name`. 
+-Use the schema name as dataset_id and 'my_project' as a placeholder project_id. "
+- "Example: `my_project.ecommerce.orders`"
 - Use BigQuery native types ONLY: STRING, INT64, FLOAT64, NUMERIC, BIGNUMERIC, BOOL, DATE, DATETIME, TIMESTAMP, TIME, BYTES, JSON, ARRAY<T>, STRUCT<…>, GEOGRAPHY.
 - Do NOT use VARCHAR, INT, INTEGER, FLOAT, BOOLEAN, TEXT, SERIAL, AUTO_INCREMENT, IDENTITY.
 - All PRIMARY KEY and FOREIGN KEY constraints MUST include NOT ENFORCED.
@@ -529,6 +534,75 @@ SCD (Slowly Changing Dimension) type selection rules — apply to EVERY dimensio
   For each dimension table, choose the most appropriate SCD type and document it in the table's "scd_type" field.
 """
 
+# ════════════════════════════════════════════════════════════════
+# CUSTOM KB CONTEXT BUILDER
+# ════════════════════════════════════════════════════════════════
+
+def build_custom_kb_context(request: str, custom_kb: dict, top_k: int = 3) -> str:
+    """
+    Build RAG context from custom knowledge base JSON.
+    Similar to build_rag_context_block but searches the provided dict.
+    """
+    if not custom_kb:
+        return ""
+
+    entries = custom_kb.get("entries", [])
+    if not entries:
+        return ""
+
+    logger.info("Custom KB loaded with %d entries", len(entries))
+
+    # Extract keywords from request (words > 4 chars)
+    keywords = [w.lower() for w in request.split() if len(w) > 4]
+    if not keywords:
+        # Fallback: take first few entries
+        selected = entries[:top_k]
+    else:
+        # Score entries based on keyword matches
+        scored = []
+        for entry in entries:
+            field_name = entry.get("field_name", "").lower()
+            desc = entry.get("professional_description", "").lower()
+            score = sum(1 for kw in keywords if kw in field_name or kw in desc)
+            scored.append((score, entry))
+        scored.sort(reverse=True, key=lambda x: x[0])
+        selected = [entry for score, entry in scored[:top_k] if score > 0]
+        if not selected:
+            selected = entries[:top_k]
+
+    parts = []
+    for entry in selected:
+        field = entry.get("field_name", "")
+        desc = entry.get("professional_description", "")
+        constraints = entry.get("constraints", "")
+        related = entry.get("related_fields", "")
+        compliance = entry.get("compliance_notes", "")
+
+        part = f"Reference Field : {field}\nDescription     : {desc}"
+        if constraints:
+            part += f"\nConstraints     : {constraints}"
+        if related:
+            part += f"\nRelated Fields  : {related}"
+        if compliance:
+            part += f"\nCompliance      : {compliance}"
+        parts.append(part)
+
+    if not parts:
+        return ""
+
+    logger.info("Extracted %d relevant entries from custom KB", len(parts))
+
+    separator = "\n\n---\n\n"
+    context = (
+        "=== CUSTOM KNOWLEDGE BASE CONTEXT ===\n"
+        "Use these professional field descriptions.\n\n"
+        + separator.join(parts)
+        + "\n=== END CUSTOM CONTEXT ==="
+    )
+
+    logger.info("Custom KB context built (%d chars)", len(context))
+    return context
+
 # ————————————————————
 # Prompt Summary
 # ————————————————————
@@ -574,18 +648,27 @@ def _relational_prompt(
 
     logical_block = ""
     if logical_model and not logical_model.get("error"):
+        entities = logical_model.get("entities", [])
+        entity_count = len(entities)
+        entity_names = [e.get("name", "") for e in entities]
+
         logical_block = f"""
 
-LOGICAL DATA MODEL (AUTHORITATIVE SOURCE):
-
+LOGICAL DATA MODEL (AUTHORITATIVE SOURCE & FOUNDATION) — {entity_count} ENTITIES TOTAL:
 {json.dumps(logical_model, indent=2)}
 
-INSTRUCTIONS:
-- Map EVERY entity above to exactly ONE table.
-- Preserve ALL attributes as columns unless normalization requires decomposition.
-- Preserve ALL relationships and convert them into foreign keys.
-- Do NOT invent new entities or attributes.
-- Surrogate keys may be added where necessary, following the naming convention.
+CRITICAL CONSTRAINTS — VIOLATION WILL RESULT IN INVALID OUTPUT:
+- The LOGICAL MODEL above is your FOUNDATION — build your physical model UPON it
+- You MUST create exactly {entity_count} tables (one per entity)
+- Entity names → Table names: {', '.join(entity_names)}
+- DO NOT add any new tables/entities beyond these {entity_count}
+- DO NOT remove any entities from the logical model
+- Map EVERY entity above to exactly ONE table
+- Preserve ALL attributes as columns unless normalization requires decomposition
+- NEW ATTRIBUTES ARE ALLOWED: surrogate keys, technical columns, derived fields, audit columns
+- Preserve ALL relationships and convert them into foreign keys
+- Surrogate keys may be added where necessary, following the naming convention
+- If you think something is missing, you are WRONG — the logical model is complete
 """
 
     return f"""
@@ -656,7 +739,8 @@ Output ONLY valid JSON:
 }}
 
 Use the RAG KNOWLEDGE BASE CONTEXT above (if provided) to enrich descriptions.
-Follow the LOGICAL DATA MODEL strictly if provided.
+FOLLOW THE LOGICAL DATA MODEL ABOVE AS YOUR FOUNDATION — it defines your entities and you build upon it.
+The logical model is authoritative — do not deviate from its entity structure.
 
 User Request: {request}
 """
@@ -677,20 +761,29 @@ def _analytical_prompt(
 
     logical_block = ""
     if logical_model and not logical_model.get("error"):
+        entities = logical_model.get("entities", [])
+        entity_count = len(entities)
+        entity_names = [e.get("name", "") for e in entities]
+
         logical_block = f"""
 
-LOGICAL DATA MODEL (AUTHORITATIVE SOURCE):
-
+LOGICAL DATA MODEL (AUTHORITATIVE SOURCE & FOUNDATION) — {entity_count} ENTITIES TOTAL:
 {json.dumps(logical_model, indent=2)}
 
-INSTRUCTIONS:
-- Use this logical model as the basis for your STAR SCHEMA.
-- Identify FACT tables from transactional or event-based entities.
-- Identify DIMENSION tables from descriptive, lookup, or master data entities.
-- Derive MEASURES from numeric, aggregatable attributes.
-- Preserve all business relationships by converting them into fact-to-dimension foreign keys.
-- Do NOT invent new entities or attributes.
-- Surrogate keys may be added where required, following naming standards.
+CRITICAL CONSTRAINTS — VIOLATION WILL RESULT IN INVALID OUTPUT:
+- The LOGICAL MODEL above is your FOUNDATION — build your star schema UPON it
+- You MUST create exactly {entity_count} dimension tables (one per entity)
+- Entity names → Dimension names: {', '.join(entity_names)}
+- DO NOT add any new dimension tables beyond these {entity_count} entities
+- DO NOT remove any entities from the logical model
+- Use this logical model as the basis for your STAR SCHEMA
+- Identify FACT tables from transactional or event-based entities
+- Identify DIMENSION tables from descriptive, lookup, or master data entities
+- Derive MEASURES from numeric, aggregatable attributes
+- NEW ATTRIBUTES ARE ALLOWED: surrogate keys, technical columns, derived fields, SCD columns, audit columns
+- Preserve all business relationships by converting them into fact-to-dimension foreign keys
+- Surrogate keys may be added where required, following naming standards
+- If you think something is missing, you are WRONG — the logical model is complete
 """
 
     return f"""
@@ -808,6 +901,8 @@ Output ONLY valid JSON:
 
 Follow the LOGICAL DATA MODEL strictly if provided.
 Use the RAG KNOWLEDGE BASE CONTEXT above (if provided) to enrich descriptions.
+FOLLOW THE LOGICAL DATA MODEL ABOVE AS YOUR FOUNDATION — it defines your entities and you build your star schema upon it.
+The logical model is authoritative — do not deviate from its entity structure.
 
 User Request: {request}
 """
@@ -833,6 +928,10 @@ CRITICAL RULES:
    - "added_columns": list of "table.column" strings for new columns.
    - "modified_columns": list of "table.column" strings for columns whose type or constraints changed.
 
+IMPORTANT: Preserve all existing tables, columns, and relationships that are not affected by the modification request. Do not remove or omit any existing elements unless explicitly requested to delete them. If the request only adds new elements, include all existing elements unchanged. Only add or modify elements as explicitly stated in the modification request. Do not invent or add any new tables, columns, or relationships beyond what is requested.
+
+Example: If the existing model has tables "customers", "orders", "products", and the request is "add a column 'phone' to customers", return the complete model with all three tables, where "customers" now includes the new "phone" column, and "orders" and "products" remain unchanged.
+
 Modification Request:
 {request}
 
@@ -847,16 +946,119 @@ class SchemaAgent:
         self.llm = _get_llm(temperature=0.1)
         self.db_type = db_engine or os.getenv("DATABASE_TYPE", "MySQL")
 
-    def generate_logical_model(self, request: str) -> dict:
+    def _validate_physical_model(self, physical_model: dict, logical_model: dict, model_type: str) -> dict:
+        """
+        Validate that physical model preserves all entities from logical model.
+        Returns validated model or error dict.
+        """
+        if not logical_model or logical_model.get("error") or not physical_model or physical_model.get("error"):
+            return physical_model
+
+        logical_entities = logical_model.get("entities", [])
+        logical_count = len(logical_entities)
+
+        if model_type == "relational":
+            physical_tables = physical_model.get("tables", [])
+            physical_count = len(physical_tables)
+
+            if physical_count != logical_count:
+                logger.error(
+                    f"❌ RELATIONAL MODEL VIOLATION: Expected {logical_count} tables, got {physical_count}. "
+                    f"Logical entities: {[e.get('name') for e in logical_entities]}. "
+                    f"Physical tables: {[t.get('name') for t in physical_tables]}"
+                )
+                return {
+                    "error": f"Physical model must have exactly {logical_count} tables (one per logical entity). "
+                           f"Found {physical_count} tables instead. New attributes are allowed, but not new tables.",
+                    "logical_entities": logical_count,
+                    "physical_tables": physical_count,
+                    "expected_entities": [e.get("name") for e in logical_entities],
+                    "actual_tables": [t.get("name") for t in physical_tables]
+                }
+
+        elif model_type == "analytical":
+            dimension_tables = physical_model.get("dimension_tables", [])
+            physical_count = len(dimension_tables)
+
+            if physical_count != logical_count:
+                logger.error(
+                    f"❌ ANALYTICAL MODEL VIOLATION: Expected {logical_count} dimension tables, got {physical_count}. "
+                    f"Logical entities: {[e.get('name') for e in logical_entities]}. "
+                    f"Physical dimensions: {[t.get('name') for t in dimension_tables]}"
+                )
+                return {
+                    "error": f"Physical model must have exactly {logical_count} dimension tables (one per logical entity). "
+                           f"Found {physical_count} dimension tables instead. New attributes are allowed, but not new tables.",
+                    "logical_entities": logical_count,
+                    "physical_dimensions": physical_count,
+                    "expected_entities": [e.get("name") for e in logical_entities],
+                    "actual_dimensions": [t.get("name") for t in dimension_tables]
+                }
+
+        logger.info(f"✅ {model_type.upper()} MODEL VALIDATION PASSED: {physical_count} tables match {logical_count} entities")
+        return physical_model
+
+    def _retry_with_correction(self, request: str, logical_model: dict, model_type: str, rag_context: str = "", max_retries: int = 2) -> dict:
+        """
+        Retry physical model generation with correction prompt if validation fails.
+        """
+        entities = logical_model.get("entities", [])
+        entity_count = len(entities)
+        entity_names = [e.get("name") for e in entities]
+
+        correction_prompt = f"""
+CRITICAL CORRECTION REQUIRED:
+
+Your previous response violated the constraint of preserving all logical entities.
+
+LOGICAL MODEL HAS {entity_count} ENTITIES: {', '.join(entity_names)}
+
+You MUST create exactly {entity_count} {'tables' if model_type == 'relational' else 'dimension tables'}.
+
+DO NOT add any new {'tables' if model_type == 'relational' else 'dimension tables'}. DO NOT remove any entities.
+
+NEW ATTRIBUTES ARE ALLOWED: surrogate keys, technical columns, derived fields, audit columns, etc.
+
+Regenerate the {'relational' if model_type == 'relational' else 'analytical'} model correctly.
+
+Original request: {request}
+"""
+
+        for attempt in range(max_retries):
+            logger.warning(f"🔄 RETRY ATTEMPT {attempt + 1}/{max_retries} for {model_type} model correction")
+
+            if model_type == "relational":
+                prompt = _relational_prompt(request, self.db_type, rag_context, logical_model) + correction_prompt
+            else:
+                prompt = _analytical_prompt(request, self.db_type, rag_context, logical_model) + correction_prompt
+
+            model = _invoke_llm(self.llm, prompt)
+            model = self._validate_physical_model(model, logical_model, model_type)
+
+            if not model.get("error"):
+                logger.info(f"✅ RETRY SUCCESSFUL: {model_type} model validation passed on attempt {attempt + 1}")
+                return model
+
+        logger.error(f"❌ ALL RETRIES FAILED: Could not generate valid {model_type} model after {max_retries} attempts")
+        return model  # Return the last failed attempt
+
+    def generate_logical_model(self, request: str, custom_kb: dict | None = None) -> dict:
         if not self.llm:
             return {"error": "LLM not configured"}
 
-        return _invoke_llm(self.llm, _logical_prompt(request))
+        prompt = _logical_prompt(request)
+        if custom_kb:
+            context = build_custom_kb_context(request, custom_kb, top_k=3)
+            if context:
+                prompt = f"{context}\n\n{prompt}"
+
+        return _invoke_llm(self.llm, prompt)
 
     def generate_relational_model(
     self,
     request: str,
-    logical_model: dict | None = None
+    logical_model: dict | None = None,
+    custom_kb: dict | None = None
 ) -> dict:
 
         if not self.llm:
@@ -865,9 +1067,24 @@ class SchemaAgent:
         # Fetch RAG context — default empty
         rag_context = ""
 
-        logger.info("RAG_AVAILABLE flag: %s", RAG_AVAILABLE)
+        if custom_kb:
+            # Try to upload to Azure first
+            import uuid
+            custom_index = f"custom-kb-{uuid.uuid4().hex[:8]}"
+            custom_client = upload_custom_kb(custom_kb, custom_index)
+            if custom_client:
+                logger.info("Custom KB uploaded to Azure, using search client")
+                rag_context = build_rag_context_block(
+                    [{"name": w, "columns": []} for w in request.split() if len(w) > 4],
+                    custom_client,
+                    semantic_config_name="custom-semantic",
+                )
+            else:
+                logger.warning("Failed to upload custom KB to Azure, falling back to local processing")
+                rag_context = build_custom_kb_context(request, custom_kb, top_k=3)
+        elif RAG_AVAILABLE:
+            logger.info("RAG_AVAILABLE flag: %s", RAG_AVAILABLE)
 
-        if RAG_AVAILABLE:
             client = get_search_client()
             logger.info("RAG search client: %s", client)
 
@@ -914,20 +1131,43 @@ class SchemaAgent:
         # Invoke LLM
         model = _invoke_llm(self.llm, relational_prompt)
 
+        # Validate physical model against logical model
+        model = self._validate_physical_model(model, logical_model, "relational")
+
+        # If validation failed, retry with correction
+        if model.get("error") and logical_model:
+            logger.warning("🔄 Validation failed, attempting correction retry...")
+            model = self._retry_with_correction(request, logical_model, "relational", rag_context)
+
         # Stamp namespace
         namespace = _extract_namespace(request, self.db_type)
         return _stamp_namespace(model, namespace, self.db_type)
 
-    def generate_analytical_model(self,request: str,logical_model: dict | None = None,) -> dict:
+    def generate_analytical_model(self,request: str,logical_model: dict | None = None, custom_kb: dict | None = None) -> dict:
         if not self.llm:
             return {"error": "LLM not configured"}
 
         # Fetch RAG context — default empty
         rag_context = ""
 
-        logger.info("RAG_AVAILABLE flag: %s", RAG_AVAILABLE)
+        if custom_kb:
+            # Try to upload to Azure first
+            import uuid
+            custom_index = f"custom-kb-{uuid.uuid4().hex[:8]}"
+            custom_client = upload_custom_kb(custom_kb, custom_index)
+            if custom_client:
+                logger.info("Custom KB uploaded to Azure, using search client")
+                rag_context = build_rag_context_block(
+                    [{"name": w, "columns": []} for w in request.split() if len(w) > 4],
+                    custom_client,
+                    semantic_config_name="custom-semantic",
+                )
+            else:
+                logger.warning("Failed to upload custom KB to Azure, falling back to local processing")
+                rag_context = build_custom_kb_context(request, custom_kb, top_k=3)
+        elif RAG_AVAILABLE:
+            logger.info("RAG_AVAILABLE flag: %s", RAG_AVAILABLE)
 
-        if RAG_AVAILABLE:
             client = get_search_client()
             logger.info("RAG search client: %s", client)
 
@@ -967,6 +1207,14 @@ class SchemaAgent:
             ),
         )
 
+        # Validate physical model against logical model
+        model = self._validate_physical_model(model, logical_model, "analytical")
+
+        # If validation failed, retry with correction
+        if model.get("error") and logical_model:
+            logger.warning("🔄 Validation failed, attempting correction retry...")
+            model = self._retry_with_correction(request, logical_model, "analytical", rag_context)
+
         # Stamp namespace
         namespace = _extract_namespace(request, self.db_type)
         return _stamp_namespace(model, namespace, self.db_type)
@@ -975,24 +1223,31 @@ class SchemaAgent:
         if not self.llm:
             return {"error": "LLM not configured"}
         result = _invoke_llm(self.llm, _modification_prompt(existing_model, request))
+        logger.info("Modification result: %s", result)
+        if isinstance(result, dict) and 'tables' in result:
+            logger.info("Number of tables in modified model: %d", len(result.get('tables', [])))
+        elif isinstance(result, dict) and ('fact_tables' in result or 'dimension_tables' in result):
+            logger.info("Number of fact tables: %d, dimension tables: %d", len(result.get('fact_tables', [])), len(result.get('dimension_tables', [])))
         # Extract _changes before returning so it's accessible at top level
         changes = result.pop("_changes", {})
         result["_changes"] = changes
         return result
 
-    def process_create(self,request: str,model_type: str = "both",logical_model: dict | None = None,) -> dict:
+    def process_create(self,request: str,model_type: str = "both",logical_model: dict | None = None, custom_kb: dict | None = None) -> dict:
         result = {}
 
         if model_type in ("relational", "both"):
             result["relational_model"] = self.generate_relational_model(
                 request,
                 logical_model,
+                custom_kb,
             )
 
         if model_type in ("analytical", "both"):
             result["analytical_model"] = self.generate_analytical_model(
                 request,
                 logical_model,
+                custom_kb,
             )
 
         return result
@@ -1044,12 +1299,14 @@ def create_schema(
     request: str,
     model_type: str = "both",
     db_engine: str = "MySQL",
-    logical_model: Optional[Dict] = None
+    logical_model: Optional[Dict] = None,
+    custom_kb: Optional[Dict] = None
 ) -> Dict:
     return SchemaAgent(db_engine=db_engine).process_create(
         request,
         model_type=model_type,
-        logical_model=logical_model
+        logical_model=logical_model,
+        custom_kb=custom_kb
     )
 
 def modify_schema(request: str, existing_model: dict, db_engine: str = "MySQL") -> dict:
