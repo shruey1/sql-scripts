@@ -24,6 +24,8 @@ export default function App() {
   // State
   const [logicalModel, setLogicalModel] = useState(null);
   const [pendingOpts, setPendingOpts] = useState(null);
+  const [lastApprovedLogicalModel, setLastApprovedLogicalModel] = useState(null);
+  const [lastApprovedModelType, setLastApprovedModelType] = useState('relational');
   const [operation, setOperation] = useState('CREATE');
   const [validationMode, setValidationMode] = useState('auto');
   const [dataModel, setDataModel] = useState(null);
@@ -59,9 +61,11 @@ export default function App() {
   // STEP 0 → STEP 1 (Generate Logical Model)
   function handleGenerate(opts) {
     wrap(async () => {
-      const res = await generateLogicalModel(opts.userQuery, opts.dbEngine, opts.customKb);
+      const res = await generateLogicalModel(opts.userQuery, opts.dbEngine, opts.customKb, opts.modelType);
       setLogicalModel(res.logical_model);
       setPendingOpts(opts);
+      setLastApprovedLogicalModel(null);
+      setLastApprovedModelType(opts.modelType || 'relational');
       setDbEngine(opts.dbEngine || 'MySQL');
       setStep(1);
     });
@@ -70,6 +74,17 @@ export default function App() {
   // STEP 1 → STEP 2 (Approve Logical Model → Physical)
   function handleLogicalApprove(modelType, approvedLogicalModel) {
     wrap(async () => {
+      const reuseExisting =
+        dataModel &&
+        lastApprovedLogicalModel &&
+        lastApprovedModelType === modelType &&
+        JSON.stringify(lastApprovedLogicalModel) === JSON.stringify(approvedLogicalModel);
+
+      if (reuseExisting) {
+        setStep(2);
+        return;
+      }
+
       const res = await generateModel(
         pendingOpts.userQuery,
         'CREATE',
@@ -85,6 +100,8 @@ export default function App() {
 
       setDbEngine(engine);
       setDataModel(model);
+      setLastApprovedLogicalModel(approvedLogicalModel);
+      setLastApprovedModelType(modelType);
       setOperation(res.operation || 'CREATE');
       setValidationMode(pendingOpts.validationMode || 'auto');
       setValidation(null);
@@ -178,6 +195,7 @@ export default function App() {
             logicalModel={logicalModel}
             userQuery={pendingOpts?.userQuery}
             dbEngine={pendingOpts?.dbEngine}
+            modelType={pendingOpts?.modelType || 'both'}
             loading={loading}
             error={error}
             onApprove={handleLogicalApprove}

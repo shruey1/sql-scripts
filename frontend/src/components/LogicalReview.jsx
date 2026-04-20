@@ -239,11 +239,11 @@ export function LogicalReview({
   logicalModel,
   userQuery,
   dbEngine,
+  modelType = "both",
   loading,
   error,
   onApprove,
 }) {
-  const [modelType, setModelType] = useState("both");
   const [feedback, setFeedback] = useState("");
   const [localModel, setLocalModel] = useState(logicalModel);
   const [iterating, setIterating] = useState(false);
@@ -263,7 +263,9 @@ export function LogicalReview({
     try {
       const res = await generateLogicalModel(
         userQuery + "\n\nAdditional changes: " + feedback,
-        dbEngine
+        dbEngine,
+        null,
+        modelType
       );
       setLocalModel(res.logical_model);
       setFeedback("");
@@ -357,7 +359,6 @@ export function LogicalReview({
 
       {/* RIGHT */}
       <div style={{ width: 300 }}>
-        {/* Model type selector */}
         <div style={{ marginBottom: 16 }}>
           <p
             style={{
@@ -367,42 +368,24 @@ export function LogicalReview({
               marginBottom: 10,
             }}
           >
-            Model type
+            Target model type
           </p>
-
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              style={modelTypeStyle(modelType === "both")}
-              onClick={() => setModelType("both")}
-            >
-              <div style={{ fontSize: 16, marginBottom: 4 }}>⬡</div>
-              <div>Both</div>
-              <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>
-                Relational + Analytical
-              </div>
-            </button>
-
-            <button
-              style={modelTypeStyle(modelType === "relational", C.green)}
-              onClick={() => setModelType("relational")}
-            >
-              <div style={{ fontSize: 16, marginBottom: 4 }}>⊞</div>
-              <div>Relational</div>
-              <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>
-                3NF normalised
-              </div>
-            </button>
-
-            <button
-              style={modelTypeStyle(modelType === "analytical", C.purple)}
-              onClick={() => setModelType("analytical")}
-            >
-              <div style={{ fontSize: 16, marginBottom: 4 }}>✦</div>
-              <div>Analytical</div>
-              <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>
-                Star schema
-              </div>
-            </button>
+          <div
+            style={{
+              background: C.card,
+              border: "1px solid " + C.border,
+              borderRadius: 10,
+              padding: 12,
+            }}
+          >
+            <span style={{ fontSize: 12, color: C.text }}>Selected: </span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.accent }}>
+              {modelType === 'both'
+                ? 'Relational + Analytical'
+                : modelType === 'relational'
+                ? 'Relational'
+                : 'Analytical'}
+            </span>
           </div>
         </div>
 

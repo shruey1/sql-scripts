@@ -61,7 +61,7 @@ class GenerateRequest(BaseModel):
     user_query: str
     operation: Optional[str] = ""
     existing_model: Optional[Dict[str, Any]] = None
-    model_type: Optional[str] = "both"
+    model_type: Optional[str] = "relational"
     db_engine: Optional[str] = ""
     logical_model: Optional[Dict[str, Any]] = None  # New field to accept logical model
     custom_kb: Optional[Dict[str, Any]] = None
@@ -92,6 +92,7 @@ class ERDRequest(BaseModel):
 class LogicalModelRequest(BaseModel):
     user_query: str
     db_engine: Optional[str] = "MySQL"
+    model_type: Optional[str] = "relational"
     custom_kb: Optional[Dict[str, Any]] = None
 
 class ERDFromModelRequest(BaseModel):
@@ -102,7 +103,7 @@ class ERDFromModelRequest(BaseModel):
 class PromptSummaryRequest(BaseModel):
     user_query: str
     db_engine: Optional[str] = "MySQL"
-    model_type: Optional[str] = "both"
+    model_type: Optional[str] = "relational"
 
 
 # -------------------------------------------------------
@@ -128,7 +129,7 @@ def prompt_summary(req: PromptSummaryRequest):
         summary = get_prompt_summary(
             request=req.user_query,
             db_type=req.db_engine or "MySQL",
-            model_type=req.model_type or "both",
+            model_type=req.model_type or "relational",
         )
         return {"status": "success", "summary": summary}
     except Exception as e:
@@ -147,6 +148,7 @@ def logical_model(req: LogicalModelRequest):
         result = create_logical_model(
             req.user_query,
             db_engine=req.db_engine or "MySQL",
+            model_type=req.model_type or "relational",
             custom_kb=req.custom_kb
         )
 
@@ -168,7 +170,7 @@ def generate(req: GenerateRequest):
             user_input=req.user_query,
             operation=req.operation or "",
             existing_model=req.existing_model,
-            model_type=req.model_type or "both",
+            model_type=req.model_type or "relational",
             db_engine=req.db_engine or "",
             logical_model=req.logical_model,
             custom_kb=req.custom_kb,

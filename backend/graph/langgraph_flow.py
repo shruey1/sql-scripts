@@ -57,14 +57,14 @@ def run_generate_model(
     user_input: str,
     operation: str = '',
     existing_model: dict = None,
-    model_type: str = 'both',       # 'relational' | 'analytical' | 'both'
+    model_type: str = 'relational',       # 'relational' | 'analytical'
     db_engine: str = '',            # explicit engine from UI (may be empty)
     logical_model: Optional[Dict] = None,
     custom_kb: Optional[Dict] = None,
 ) -> dict:
     """
     Step 1: classify + generate JSON data model only.
-    Respects model_type (relational / analytical / both).
+    Respects model_type (relational / analytical).
     Detects or uses the specified db_engine.
     """
     # Resolve operation

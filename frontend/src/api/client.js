@@ -29,18 +29,19 @@ export function generateModel(
     user_query: userQuery,
     operation: operation || "",
     existing_model: existingModel || null,
-    model_type: modelType || "both",
+    model_type: modelType || "relational",
     db_engine: dbEngine || "",
     custom_kb: customKb || null,
     logical_model: logicalModel || null,
   });
 }
 
-export function generateLogicalModel(userQuery, dbEngine, customKb) {
+export function generateLogicalModel(userQuery, dbEngine, customKb, modelType) {
   return post("/workflow/logical", {
     user_query: userQuery,
     db_engine: dbEngine || "MySQL",
     custom_kb: customKb || null,
+    model_type: modelType || "relational",
   });
 }
 
@@ -107,6 +108,6 @@ export function getPromptSummary(userQuery, dbEngine, modelType) {
   return post("/workflow/prompt-summary", {
     user_query: userQuery,
     db_engine: dbEngine || "MySQL",
-    model_type: modelType || "both",
+    model_type: modelType || "relational",
   });
 }

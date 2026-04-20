@@ -175,10 +175,18 @@ def _extract_namespace(request: str, db_type: str) -> dict:
 # Logical Model Prompt
 # ————————————————————
 
-def _logical_prompt(request: str) -> str:
+def _logical_prompt(request: str, model_type: str = "relational") -> str:
+    model_hint = ""
+    if model_type == "relational":
+        model_hint = "Prepare a logical model that is well-suited for later relational implementation, with clear business entities and relationships."
+    elif model_type == "analytical":
+        model_hint = "Prepare a logical model that is well-suited for later analytical star schema implementation, clearly identifying facts, dimensions, and business metrics."
+
     return f"""
 You are a senior data architect. Given a business description, produce a
 LOGICAL data model — engine-agnostic, no physical types, no DDL.
+
+{model_hint}
 
 Output ONLY valid JSON:
 {{
@@ -212,12 +220,18 @@ Rules:
 2. Every entity and attribute MUST have a description
 3. Mark exactly one attribute per entity as "is_identifier": true
 4. Keep it business-facing, not technical
+5. Use business-friendly names for entities and attributes. Avoid snake_case, underscores, and technical abbreviations. Prefer natural language naming like Customer, Order Date, Product Category.
 
 User Request: {request}
 """
 
-def create_logical_model(request: str, db_engine: str = "MySQL", custom_kb: dict | None = None) -> dict:
-    return SchemaAgent(db_engine=db_engine).generate_logical_model(request, custom_kb)
+def create_logical_model(
+    request: str,
+    db_engine: str = "MySQL",
+    model_type: str = "relational",
+    custom_kb: dict | None = None
+) -> dict:
+    return SchemaAgent(db_engine=db_engine).generate_logical_model(request, custom_kb, model_type)
 
 # ————————————————————
 # Namespace Stamping
@@ -624,11 +638,11 @@ def get_prompt_summary(request: str, db_type: str, model_type: str) -> dict:
     return {
         "db_engine": db_type,
         "model_type": model_type,
-        "normal_form": "3NF" if model_type in ("relational", "both") else "N/A",
-        "schema_pattern": "Star Schema" if model_type in ("analytical", "both") else "N/A",
+        "normal_form": "3NF" if model_type == "relational" else "N/A",
+        "schema_pattern": "Star Schema" if model_type == "analytical" else "N/A",
         "engine_rules": engine_summary,
-        "scd_applied": model_type in ("analytical", "both"),
-        "scd_summary": "SCD 0–6 per dimension table" if model_type in ("analytical", "both") else "Not applicable",
+        "scd_applied": model_type == "analytical",
+        "scd_summary": "SCD 0–6 per dimension table" if model_type == "analytical" else "Not applicable",
         "namespace_extraction": "project.dataset auto-detected (BigQuery)" if db_type == "BigQuery" else "schema auto-detected from prompt",
     }
 
@@ -808,6 +822,7 @@ CRITICAL RULES:
 6. Dimension tables:
      - Include "scd_type"
      - Include "scd_rationale"
+     - Decide the appropriate SCD type intelligently for each dimension based on business history requirements, slowly changing attributes, and audit requirements.
 
 7. COLUMN NAMING STANDARD:
    a. lowercase snake_case
@@ -938,6 +953,113 @@ Modification Request:
 Existing Model:
 {json.dumps(existing_model, indent=2)}
 """
+# ════════════════════════════════════════════════════════════════
+# SCD DETECTION & AUTO-ASSIGNMENT
+# ════════════════════════════════════════════════════════════════
+
+def _detect_scd_type_for_column(col_name: str, col_description: str = "", table_description: str = "") -> dict:
+    """
+    Automatically detect and assign SCD type for a dimension column.
+    Returns {"scd_type": int, "reason": str}
+    """
+    col_lower = col_name.lower()
+    desc_lower = (col_description + " " + table_description).lower()
+    
+    # SCD Type 0: Static columns (rarely change)
+    static_keywords = ["code", "id", "identifier", "static", "immutable", "guid", "sku"]
+    if any(kw in col_lower for kw in static_keywords) or any(kw in desc_lower for kw in static_keywords):
+        return {
+            "scd_type": 0,
+            "reason": "Static/immutable identifier that never changes"
+        }
+    
+    # SCD Type 2: Historical tracking (created_at, updated_at, effective_date, expiry_date, is_current)
+    scd2_keywords = [
+        "created", "created_at", "created_date",
+        "updated", "updated_at", "updated_date",
+        "effective", "expiry", "expiration",
+        "is_current", "iscurrent", "current_flag",
+        "version", "start_date", "end_date",
+        "audit", "timestamp"
+    ]
+    if any(kw in col_lower for kw in scd2_keywords) or any(kw in desc_lower for kw in scd2_keywords):
+        return {
+            "scd_type": 2,
+            "reason": "Temporal/audit column tracking changes over time"
+        }
+    
+    # SCD Type 3: Previous value tracking (prev_*, old_*)
+    scd3_keywords = ["prev", "previous", "old", "last", "prior"]
+    if any(kw in col_lower for kw in scd3_keywords):
+        return {
+            "scd_type": 3,
+            "reason": "Tracks only the previous value of a slowly changing attribute"
+        }
+    
+    # Default to SCD Type 1: Overwrite (most descriptive attributes)
+    return {
+        "scd_type": 1,
+        "reason": "Descriptive attribute; changes overwrite old value"
+    }
+
+
+def _apply_scd_to_dimension(dimension_table: dict) -> dict:
+    """
+    Apply SCD detection to all columns in a dimension table.
+    Updates the table dict with scd_type and scd_rationale fields.
+    """
+    if not isinstance(dimension_table, dict):
+        return dimension_table
+    
+    table_name = dimension_table.get("name", "")
+    table_desc = dimension_table.get("description", "")
+    columns = dimension_table.get("columns", [])
+    
+    # Determine overall SCD type for the table
+    scd_types_used = {}
+    column_scd_details = []
+    
+    for col in columns:
+        col_name = col.get("name", "")
+        col_desc = col.get("description", "")
+        
+        scd_info = _detect_scd_type_for_column(col_name, col_desc, table_desc)
+        scd_type = scd_info["scd_type"]
+        
+        scd_types_used[scd_type] = scd_types_used.get(scd_type, 0) + 1
+        column_scd_details.append({
+            "column": col_name,
+            "scd_type": scd_type,
+            "reason": scd_info["reason"]
+        })
+    
+    # Determine overall table SCD strategy
+    # If table has SCD 2 columns, use SCD 2 for the table
+    # Otherwise use most common SCD type
+    if 2 in scd_types_used:
+        overall_scd = 2
+        rationale = "Contains temporal/audit columns (SCD 2) — track full history with effective/expiry dates and current flag"
+    elif 3 in scd_types_used:
+        overall_scd = 3
+        rationale = "Tracks previous values of changing attributes (SCD 3) — add prev_<column> for one prior value"
+    else:
+        most_common_scd = max(scd_types_used.keys()) if scd_types_used else 1
+        rationale_map = {
+            0: "Static dimension — values do not change",
+            1: "Changes overwrite old values (SCD 1) — simple and straightforward",
+        }
+        overall_scd = most_common_scd
+        rationale = rationale_map.get(most_common_scd, f"SCD Type {most_common_scd} applied")
+    
+    result = dict(dimension_table)
+    result["scd_type"] = overall_scd
+    result["scd_rationale"] = rationale
+    result["_scd_column_details"] = column_scd_details
+    
+    logger.info("Applied SCD to dimension '%s': type=%d, rationale=%s", table_name, overall_scd, rationale)
+    
+    return result
+
 # ————————————————————
 # SchemaAgent Class
 # ————————————————————
@@ -1042,11 +1164,11 @@ Original request: {request}
         logger.error(f"❌ ALL RETRIES FAILED: Could not generate valid {model_type} model after {max_retries} attempts")
         return model  # Return the last failed attempt
 
-    def generate_logical_model(self, request: str, custom_kb: dict | None = None) -> dict:
+    def generate_logical_model(self, request: str, custom_kb: dict | None = None, model_type: str = "relational") -> dict:
         if not self.llm:
             return {"error": "LLM not configured"}
 
-        prompt = _logical_prompt(request)
+        prompt = _logical_prompt(request, model_type)
         if custom_kb:
             context = build_custom_kb_context(request, custom_kb, top_k=3)
             if context:
@@ -1215,6 +1337,15 @@ Original request: {request}
             logger.warning("🔄 Validation failed, attempting correction retry...")
             model = self._retry_with_correction(request, logical_model, "analytical", rag_context)
 
+        # ✅ Apply automatic SCD detection to dimension tables
+        if isinstance(model, dict) and not model.get("error"):
+            if "dimension_tables" in model:
+                logger.info("Applying SCD detection to dimension tables...")
+                model["dimension_tables"] = [
+                    _apply_scd_to_dimension(dim) for dim in model["dimension_tables"]
+                ]
+                logger.info("SCD detection complete: %d dimension tables processed", len(model["dimension_tables"]))
+
         # Stamp namespace
         namespace = _extract_namespace(request, self.db_type)
         return _stamp_namespace(model, namespace, self.db_type)
@@ -1233,17 +1364,17 @@ Original request: {request}
         result["_changes"] = changes
         return result
 
-    def process_create(self,request: str,model_type: str = "both",logical_model: dict | None = None, custom_kb: dict | None = None) -> dict:
+    def process_create(self,request: str,model_type: str = "relational",logical_model: dict | None = None, custom_kb: dict | None = None) -> dict:
         result = {}
 
-        if model_type in ("relational", "both"):
+        if model_type == "relational":
             result["relational_model"] = self.generate_relational_model(
                 request,
                 logical_model,
                 custom_kb,
             )
 
-        if model_type in ("analytical", "both"):
+        elif model_type == "analytical":
             result["analytical_model"] = self.generate_analytical_model(
                 request,
                 logical_model,
@@ -1297,7 +1428,7 @@ from typing import Optional, Dict
 
 def create_schema(
     request: str,
-    model_type: str = "both",
+    model_type: str = "relational",
     db_engine: str = "MySQL",
     logical_model: Optional[Dict] = None,
     custom_kb: Optional[Dict] = None

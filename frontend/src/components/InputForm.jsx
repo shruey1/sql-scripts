@@ -128,13 +128,13 @@ const ANALYTICAL_PROMPT = `
 function PromptSummaryPanel({ modelType }) {
   return (
     <div style={{ padding: "4px 0" }}>
-      {(modelType === "both" || modelType === "relational") && (
+      {modelType === "relational" && (
         <div style={{ marginBottom: 20 }}>
           <SummaryRow label="Relational Model Rules" value={RELATIONAL_PROMPT.trim()} />
         </div>
       )}
 
-      {(modelType === "both" || modelType === "analytical") && (
+      {modelType === "analytical" && (
         <div>
           <SummaryRow label="Analytical Model Rules" value={ANALYTICAL_PROMPT.trim()} />
         </div>
@@ -151,7 +151,7 @@ export function InputForm({ onSubmit, loading, error }) {
   const [uploadedSchema, setUploadedSchema] = useState(null);
   const [uploadedFileName, setUploadedFileName] = useState("");
   const [validationMode, setValidationMode] = useState("auto");
-  const [modelType, setModelType] = useState("both");
+  const [modelType, setModelType] = useState("relational");
   const [dbEngine, setDbEngine] = useState("");
   const [customKb, setCustomKb] = useState(null);
   const [customKbFileName, setCustomKbFileName] = useState("");
@@ -203,7 +203,7 @@ export function InputForm({ onSubmit, loading, error }) {
       operation: mainTab === "new" ? "CREATE" : "MODIFY",
       existingModel: mainTab === "modify" ? uploadedSchema : null,
       validationMode: validationMode,
-      modelType: "both",
+      modelType: modelType,
       dbEngine: dbEngine,
       customKb: customKb,
     });
@@ -388,6 +388,44 @@ export function InputForm({ onSubmit, loading, error }) {
                   </button>
                 );
               })}
+            </div>
+          </div>
+
+          {/* Model type selector */}
+          <div style={{ marginTop: 20 }}>
+            <p
+              style={{
+                color: C.textMuted,
+                fontSize: 13,
+                fontWeight: 600,
+                marginBottom: 10,
+              }}
+            >
+              Target model type
+              <span
+                style={{
+                  color: C.textDim,
+                  fontWeight: 400,
+                  marginLeft: 8,
+                }}
+              >
+                Choose relational or analytical
+              </span>
+            </p>
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => setModelType("relational")}
+                style={modelTypeStyle(modelType === "relational", C.green)}
+              >
+                Relational
+              </button>
+              <button
+                onClick={() => setModelType("analytical")}
+                style={modelTypeStyle(modelType === "analytical", C.purple)}
+              >
+                Analytical
+              </button>
             </div>
           </div>
 
