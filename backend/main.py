@@ -138,25 +138,24 @@ def prompt_summary(req: PromptSummaryRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+
 @app.post("/workflow/logical")
 def logical_model(req: LogicalModelRequest):
     """
     Step 1: Generate a logical (engine-agnostic) data model for user review.
     """
     try:
-        from backend.agents.logical_model import create_logical_model
-
         result = create_logical_model(
-            req.user_query,
+            request=req.user_query,
             db_engine=req.db_engine or "MySQL",
             model_type=req.model_type or "relational",
-            custom_kb=req.custom_kb
+            custom_kb=req.custom_kb,
         )
 
         return {
             "status": "success",
             "timestamp": datetime.utcnow().isoformat(),
-            "logical_model": result
+            "logical_model": result,
         }
 
     except Exception as e:
