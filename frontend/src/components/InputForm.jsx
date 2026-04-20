@@ -4,17 +4,17 @@ import { useState } from "react";
 import { Btn, ErrorBanner } from "./ui/Primitives";
 
 const C = {
-  surface: "#13161e",
-  card: "#181c27",
-  border: "#232840",
-  accent: "#4f8ef7",
-  green: "#34d399",
-  purple: "#a78bfa",
-  amber: "#fbbf24",
-  text: "#e2e8f0",
-  textMuted: "#64748b",
-  textDim: "#94a3b8",
-  teal: "#2dd4bf",
+  surface: "#ffffff",
+  card: "#ffffff",
+  border: "#e9ecef",
+  accent: "#ffd100",
+  green: "#28a745",
+  purple: "#6f42c1",
+  amber: "#ffc107",
+  text: "#212529",
+  textMuted: "#6c757d",
+  textDim: "#adb5bd",
+  teal: "#17a2b8",
 };
 
 function tabStyle(active) {
@@ -26,7 +26,7 @@ function tabStyle(active) {
     cursor: "pointer",
     border: "none",
     background: active ? C.accent : "transparent",
-    color: active ? "#fff" : C.textMuted,
+    color: active ? "#ffffff" : C.text,
     transition: "all 0.15s",
     letterSpacing: "0.02em",
   };
@@ -42,8 +42,8 @@ function modelTypeStyle(active, color) {
     fontWeight: 600,
     cursor: "pointer",
     border: "2px solid " + (active ? c : C.border),
-    background: active ? c + "15" : C.card,
-    color: active ? c : C.textMuted,
+    background: active ? c : C.card,
+    color: active ? "#ffffff" : C.text,
     transition: "all 0.15s",
     textAlign: "center",
   };
@@ -416,13 +416,13 @@ export function InputForm({ onSubmit, loading, error }) {
             <div style={{ display: "flex", gap: 8 }}>
               <button
                 onClick={() => setModelType("relational")}
-                style={modelTypeStyle(modelType === "relational", C.green)}
+                style={modelTypeStyle(modelType === "relational", C.yellow)}
               >
                 Relational
               </button>
               <button
                 onClick={() => setModelType("analytical")}
-                style={modelTypeStyle(modelType === "analytical", C.purple)}
+                style={modelTypeStyle(modelType === "analytical", C.yellow)}
               >
                 Analytical
               </button>

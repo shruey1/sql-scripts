@@ -16,7 +16,7 @@ import {
   generateERD,
 } from './api/client';
 
-const BG = '#0d0f14';
+const BG = '#ffffff';
 
 export default function App() {
   const [step, setStep] = useState(0);
@@ -142,6 +142,13 @@ export default function App() {
       );
 
       setDataModel(res.data_model);
+      setValidation(null); // Reset validation state
+
+      // Auto-validate the updated model
+      if (validationMode === 'auto') {
+        const valRes = await validateModel(res.data_model, dbEngine);
+        setValidation(valRes.validation);
+      }
 
       if (res.sql_output && Object.keys(res.sql_output).length > 0) {
         setSqlOutput(res.sql_output);

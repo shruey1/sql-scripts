@@ -3,20 +3,20 @@ import { Btn, Badge } from "./ui/Primitives";
 import { generateERDXML, generateERDPDM } from "../api/client";
 
 const C = {
-  surface: "#13161e",
-  card: "#181c27",
-  border: "#232840",
-  accent: "#4f8ef7",
-  green: "#34d399",
-  purple: "#a78bfa",
-  amber: "#fbbf24",
-  red: "#f87171",
-  redSoft: "rgba(248,113,113,0.12)",
-  text: "#e2e8f0",
-  textMuted: "#64748b",
-  textDim: "#94a3b8",
-  teal: "#2dd4bf",
-  orange: "#fb923c",
+  surface: "#ffffff",
+  card: "#ffffff",
+  border: "#e9ecef",
+  accent: "#ffd100",
+  green: "#28a745",
+  purple: "#6f42c1",
+  amber: "#ffc107",
+  red: "#dc3545",
+  redSoft: "rgba(220,53,69,0.12)",
+  text: "#212529",
+  textMuted: "#6c757d",
+  textDim: "#adb5bd",
+  teal: "#20c997",
+  orange: "#fd7e14",
 };
 
 export function ERDView({
@@ -61,7 +61,7 @@ export function ERDView({
 <title>ER Diagram</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #0d0f14; display: flex; align-items: center;
+  body { background: #ffffff; display: flex; align-items: center;
          justify-content: center; min-height: 100vh; }
   img { max-width: 100%; height: auto; display: block; }
   @media print {
@@ -232,12 +232,12 @@ export function ERDView({
           {erdData.error.includes("Graphviz") && (
             <div
               style={{
-                background: "#0d0f14",
+                background: C.card,
                 borderRadius: 8,
                 padding: 12,
                 fontSize: 12,
                 fontFamily: "monospace",
-                color: C.textDim,
+                color: C.text,
               }}
             >
               <p style={{ color: C.amber, marginBottom: 6 }}>
@@ -442,7 +442,7 @@ export function ERDView({
           {/* Image */}
           <div
             style={{
-              background: "#090b10",
+              background: C.card,
               border: "1px solid " + C.border,
               borderRadius: 14,
               overflow: "auto",

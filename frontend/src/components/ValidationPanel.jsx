@@ -1,12 +1,12 @@
 var C = {
-  green:        '#34d399',
-  greenSoft:    'rgba(52,211,153,0.12)',
-  red:          '#f87171',
-  redSoft:      'rgba(248,113,113,0.12)',
-  amber:        '#fbbf24',
-  accent:       '#4f8ef7',
-  textMuted:    '#64748b',
-  textDim:      '#94a3b8',
+  green:        '#28a745',
+  greenSoft:    'rgba(40,167,69,0.12)',
+  red:          '#dc3545',
+  redSoft:      'rgba(220,53,69,0.12)',
+  amber:        '#ffc107',
+  accent:       '#ffd100',
+  textMuted:    '#6c757d',
+  textDim:      '#adb5bd',
 };
 
 function Section({ color, label, items }) {

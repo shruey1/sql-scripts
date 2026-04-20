@@ -1,12 +1,12 @@
 import { Btn } from './Primitives';
 
 const C = {
-  surface: '#13161e',
-  border: '#232840',
-  accent: '#4f8ef7',
-  purple: '#a78bfa',
-  text: '#e2e8f0',
-  textMuted: '#64748b',
+  surface: '#ffffff',
+  border: '#e9ecef',
+  accent: '#ffd100',
+  purple: '#6f42c1',
+  text: '#212529',
+  textMuted: '#6c757d',
 };
 
 const STEPS = ['Describe', 'Review Model', 'SQL Scripts', 'ERD'];

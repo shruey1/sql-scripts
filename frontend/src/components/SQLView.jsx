@@ -3,21 +3,21 @@ import { Btn, Badge } from "./ui/Primitives";
 import { ValidationPanel } from "./ValidationPanel";
 
 const C = {
-  border: "#232840",
-  accent: "#4f8ef7",
-  green: "#34d399",
-  purple: "#a78bfa",
-  amber: "#fbbf24",
-  teal: "#2dd4bf",
-  textMuted: "#64748b",
-  text: "#e2e8f0",
-  card: "#181c27",
+  border: "#e9ecef",
+  accent: "#ffd100",
+  green: "#28a745",
+  purple: "#6f42c1",
+  amber: "#ffc107",
+  teal: "#20c997",
+  textMuted: "#6c757d",
+  text: "#212529",
+  card: "#ffffff",
 };
 
 // Tabs to display — no combined_sql
 const TAB_DEFS = [
-  { key: "relational_sql", label: "Relational DDL", color: C.green },
-  { key: "analytical_sql", label: "Analytical DDL", color: C.purple },
+  { key: "relational_sql", label: "DDL Script", color: C.green },
+  { key: "analytical_sql", label: "DDL Script", color: C.purple },
 ];
 
 function innerTabStyle(active, color) {
@@ -57,14 +57,14 @@ function SQLBlock({ sql }) {
 
       <pre
         style={{
-          background: "#090b10",
+          background: C.card,
           border: "1px solid " + C.border,
           borderRadius: 12,
           padding: 20,
           overflowX: "auto",
           fontSize: 13,
           lineHeight: 1.7,
-          color: "#c9d1d9",
+          color: C.text,
           fontFamily: '"Fira Code", monospace',
           maxHeight: 520,
           overflowY: "auto",
@@ -247,7 +247,7 @@ export function SQLView({
         style={{
           marginTop: 28,
           padding: "20px 24px",
-          background: "#13161e",
+          background: C.card,
           border: "1px solid " + C.border,
           borderRadius: 14,
           display: "flex",
@@ -257,14 +257,57 @@ export function SQLView({
           gap: 16,
         }}
       >
-        <div>
-          <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
-            Generate ER Diagram
-          </p>
-          <p style={{ color: C.textMuted, fontSize: 13 }}>
-            Visualise your schema as an interactive entity-relationship diagram.
-          </p>
-        </div>
+      <div
+
+  style={{
+
+    backgroundColor: C.card,
+
+    border: "1px solid " + C.border, // thin black border
+
+    padding: "14px 16px",
+
+    borderRadius: "6px",
+
+    width: "fit-content",
+
+  }}
+>
+<p
+
+    style={{
+
+      fontWeight: "700",
+
+      fontSize: "15px",
+
+      margin: "0 0 6px 0",
+
+      color: "#FFD700", // yellow heading
+
+    }}
+>
+
+    Generate ER Diagram
+</p>
+<p
+
+    style={{
+
+      fontSize: "13px",
+
+      margin: 0,
+
+      color: "#000000", // black subtext
+
+    }}
+>
+
+    Visualise your schema as an interactive entity-relationship diagram.
+</p>
+</div>
+ 
+
 
         <div style={{ display: "flex", gap: 12 }}>
           <Btn variant="ghost" onClick={onReset}>
@@ -272,19 +315,20 @@ export function SQLView({
           </Btn>
 
           <Btn
-            onClick={() =>
-              onGenerateERD(sqlOutput && sqlOutput.combined_sql)
-            }
-            loading={erdLoading}
-            disabled={!sqlOutput || !sqlOutput.combined_sql}
-            style={{
-              background: "linear-gradient(135deg, #4f8ef7, #a78bfa)",
-              color: "#fff",
-              border: "none",
-            }}
-          >
-            ⬡ Generate ERD →
-          </Btn>
+  onClick={() =>
+    onGenerateERD(sqlOutput && sqlOutput.combined_sql)
+  }
+  loading={erdLoading}
+  disabled={!sqlOutput || !sqlOutput.combined_sql}
+  style={{
+    background: "linear-gradient(135deg, " + C.accent + ", " + C.amber + ")",
+    color: "#000000",
+    border: "1px solid " + C.border,
+    fontWeight: 600,
+  }}
+>
+  ⬡ Generate ERD →
+</Btn>
         </div>
       </div>
     </div>

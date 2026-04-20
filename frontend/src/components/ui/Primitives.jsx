@@ -2,21 +2,21 @@
 
 // NOTE: C is defined locally here to avoid any import resolution issues
 const C = {
-  bg:         '#0d0f14',
-  surface:    '#13161e',
-  card:       '#181c27',
-  border:     '#232840',
-  accent:     '#4f8ef7',
-  accentSoft: 'rgba(79,142,247,0.12)',
-  green:      '#34d399',
-  greenSoft:  'rgba(52,211,153,0.12)',
-  amber:      '#fbbf24',
-  red:        '#f87171',
-  redSoft:    'rgba(248,113,113,0.12)',
-  purple:     '#a78bfa',
-  text:       '#e2e8f0',
-  textMuted:  '#64748b',
-  textDim:    '#94a3b8',
+  bg:         '#ffffff',
+  surface:    '#f8f9fa',
+  card:       '#ffffff',
+  border:     '#e9ecef',
+  accent:     '#ffd100',
+  accentSoft: 'rgba(255,209,0,0.12)',
+  green:      '#28a745',
+  greenSoft:  'rgba(40,167,69,0.12)',
+  amber:      '#ffc107',
+  red:        '#dc3545',
+  redSoft:    'rgba(220,53,69,0.12)',
+  purple:     '#6f42c1',
+  text:       '#212529',
+  textMuted:  '#6c757d',
+  textDim:    '#adb5bd',
 };
 
 // ── Spinner ───────────────────────────────────────────────────────────────────

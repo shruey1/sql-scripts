@@ -4,18 +4,18 @@ import { generateLogicalModel, validateModel } from "../api/client";
 import { ValidationPanel } from "./ValidationPanel";
 
 const C = {
-  surface: "#13161e",
-  card: "#181c27",
-  border: "#232840",
-  accent: "#4f8ef7",
-  green: "#34d399",
-  purple: "#a78bfa",
-  amber: "#fbbf24",
-  text: "#e2e8f0",
-  textMuted: "#64748b",
-  textDim: "#94a3b8",
-  teal: "#2dd4bf",
-  red: "#f87171",
+  surface: "#ffffff",
+  card: "#ffffff",
+  border: "#e9ecef",
+  accent: "#ffd100",
+  green: "#28a745",
+  purple: "#6f42c1",
+  amber: "#ffc107",
+  text: "#212529",
+  textMuted: "#6c757d",
+  textDim: "#adb5bd",
+  teal: "#20c997",
+  red: "#dc3545",
 };
 
 function modelTypeStyle(active, color) {
@@ -61,7 +61,7 @@ function EntityCard({ entity }) {
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 16 }}>⬡</span>
-          <span style={{ fontWeight: 700, fontSize: 14 }}>{entity.name}</span>
+          <span style={{ fontWeight: 700, fontSize: 14, color: C.text }}>{entity.name}</span>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

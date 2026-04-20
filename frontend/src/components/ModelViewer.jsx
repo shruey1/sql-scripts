@@ -1,17 +1,17 @@
 import { useState } from 'react';
 
 const C = {
-  card: '#181c27',
-  border: '#232840',
-  accent: '#4f8ef7',
-  accentSoft: 'rgba(79,142,247,0.12)',
-  green: '#34d399',
-  amber: '#fbbf24',
-  purple: '#a78bfa',
-  purpleSoft: 'rgba(167,139,250,0.12)',
-  text: '#e2e8f0',
-  textMuted: '#64748b',
-  textDim: '#94a3b8',
+  card: '#ffffff',
+  border: '#e9ecef',
+  accent: '#ffd100',
+  accentSoft: 'rgba(255,209,0,0.12)',
+  green: '#28a745',
+  amber: '#ffc107',
+  purple: '#6f42c1',
+  purpleSoft: 'rgba(111,66,193,0.12)',
+  text: '#212529',
+  textMuted: '#6c757d',
+  textDim: '#adb5bd',
 };
 
 function Badge({ color, children }) {
@@ -115,14 +115,14 @@ function TableCard({ table, badge,addedColumns = new Set(), modifiedColumns= new
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
-              <tr style={{ background: '#ffffff08' }}>
+              <tr style={{ background: C.accent }}>
                 {['Column', 'Type', 'PK', 'Nullable', 'Notes'].map((h) => (
                   <th
                     key={h}
                     style={{
                       padding: '8px 14px',
                       textAlign: 'left',
-                      color: C.textMuted,
+                      color: '#000000',
                       fontWeight: 600,
                       fontSize: 11,
                       letterSpacing: '0.05em',
@@ -273,12 +273,12 @@ export function ModelViewer({ dataModel, activeTab, changes }) {
     return (
       <pre
         style={{
-          background: '#090b10',
+          background: C.card,
           border: '1px solid ' + C.border,
           borderRadius: 12,
           padding: 20,
           fontSize: 12,
-          color: '#c9d1d9',
+          color: C.text,
           overflowX: 'auto',
           maxHeight: 600,
           overflowY: 'auto',

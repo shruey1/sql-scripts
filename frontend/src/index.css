@@ -1,32 +1,35 @@
 @import "tailwindcss";
 
 :root {
-  /* Theme colors */
-  --bg: #0d0f14;
-  --surface: #13161e;
-  --card: #181c27;
-  --border: #232840;
-  --accent: #4f8ef7;
-  --accent-soft: rgba(79, 142, 247, 0.12);
-  --accent-glow: rgba(79, 142, 247, 0.30);
-  --green: #34d399;
-  --green-soft: rgba(52, 211, 153, 0.12);
-  --amber: #fbbf24;
-  --amber-soft: rgba(251, 191, 36, 0.12);
-  --red: #f87171;
-  --red-soft: rgba(248, 113, 113, 0.12);
-  --purple: #a78bfa;
-  --purple-soft: rgba(167, 139, 250, 0.12);
-  --text: #e2e8f0;
-  --text-muted: #64748b;
-  --text-dim: #94a3b8;
+  /* EY Theme colors (yellow, white, grey) */
+  --bg: #ffffff;
+  --surface: #f8f9fa;
+  --card: #ffffff;
+  --border: #e9ecef;
+  --accent: #ffd100;
+  --accent-soft: rgba(255, 209, 0, 0.12);
+  --accent-glow: rgba(255, 209, 0, 0.30);
+  --green: #28a745;
+  --green-soft: rgba(40, 167, 69, 0.12);
+  --amber: #ffc107;
+  --amber-soft: rgba(255, 193, 7, 0.12);
+  --red: #dc3545;
+  --red-soft: rgba(220, 53, 69, 0.12);
+  --purple: #6f42c1;
+  --purple-soft: rgba(111, 66, 193, 0.12);
+  --text: #212529;
+  --text-muted: #6c757d;
+  --text-dim: #adb5bd;
+  --grey: #495057;
+  --grey-light: #dee2e6;
+  --grey-dark: #343a40;
 
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     'Helvetica Neue', Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: dark;
+  color-scheme: light;
   color: var(--text);
   background-color: var(--bg);
 

@@ -1,23 +1,26 @@
-// Design tokens — single source of truth for all colours & shared styles
+// Design tokens — EY theme colors (yellow, white, grey)
 var C = {
-  bg:          '#0d0f14',
-  surface:     '#13161e',
-  card:        '#181c27',
-  border:      '#232840',
-  accent:      '#4f8ef7',
-  accentSoft:  'rgba(79,142,247,0.12)',
-  accentGlow:  'rgba(79,142,247,0.30)',
-  green:       '#34d399',
-  greenSoft:   'rgba(52,211,153,0.12)',
-  amber:       '#fbbf24',
-  amberSoft:   'rgba(251,191,36,0.12)',
-  red:         '#f87171',
-  redSoft:     'rgba(248,113,113,0.12)',
-  purple:      '#a78bfa',
-  purpleSoft:  'rgba(167,139,250,0.12)',
-  text:        '#e2e8f0',
-  textMuted:   '#64748b',
-  textDim:     '#94a3b8',
+  bg:          '#ffffff',        // White background
+  surface:     '#f8f9fa',        // Light grey surface
+  card:        '#ffffff',        // White cards
+  border:      '#e9ecef',        // Light grey borders
+  accent:      '#ffd100',        // EY yellow
+  accentSoft:  'rgba(255,209,0,0.12)',  // Soft yellow
+  accentGlow:  'rgba(255,209,0,0.30)',  // Yellow glow
+  green:       '#28a745',        // Success green
+  greenSoft:   'rgba(40,167,69,0.12)',  // Soft green
+  amber:       '#ffc107',        // Warning amber
+  amberSoft:   'rgba(255,193,7,0.12)',  // Soft amber
+  red:         '#dc3545',         // Error red
+  redSoft:     'rgba(220,53,69,0.12)',  // Soft red
+  purple:      '#6f42c1',         // Purple accent
+  purpleSoft:  'rgba(111,66,193,0.12)', // Soft purple
+  text:        '#212529',         // Dark grey text
+  textMuted:   '#6c757d',         // Medium grey text
+  textDim:     '#adb5bd',         // Light grey text
+  grey:        '#495057',         // EY grey
+  greyLight:   '#dee2e6',         // Light grey
+  greyDark:    '#343a40',         // Dark grey
 };
 
 function tabStyle(active, color) {
@@ -30,7 +33,7 @@ function tabStyle(active, color) {
     cursor: 'pointer',
     border: 'none',
     background: active ? c : 'transparent',
-    color: active ? '#fff' : C.textMuted,
+    color: active ? '#ffffff' : C.text,
     transition: 'all 0.15s',
     letterSpacing: '0.02em',
   };
@@ -45,8 +48,8 @@ function innerTabStyle(active, color) {
     fontWeight: 600,
     cursor: 'pointer',
     border: '1px solid ' + (active ? c : C.border),
-    background: active ? c + '18' : 'transparent',
-    color: active ? c : C.textMuted,
+    background: active ? c : C.bg,
+    color: active ? '#ffffff' : C.text,
     transition: 'all 0.15s',
   };
 }

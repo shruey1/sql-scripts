@@ -219,8 +219,8 @@ def _html_table(table: Table) -> str:
     rows = [
         (
             '<TR>'
-            '<TD COLSPAN="3" BGCOLOR="#1e2d4a" ALIGN="CENTER">'
-            '<FONT COLOR="#4f8ef7" FACE="Helvetica Bold" POINT-SIZE="13">'
+            '<TD COLSPAN="3" BGCOLOR="#fbbf24" ALIGN="CENTER">'
+            '<FONT COLOR="#000000" FACE="Helvetica Bold" POINT-SIZE="13">'
             f'<B>{table.name}</B>'
             '</FONT>'
             '</TD>'
@@ -230,17 +230,17 @@ def _html_table(table: Table) -> str:
 
     for col in table.columns:
         if col.is_primary_key:
-            icon = '<FONT COLOR="#fbbf24">🔑</FONT>'
+            icon = '<FONT COLOR="#000000">🔑</FONT>'
         elif col.is_foreign_key:
-            icon = '<FONT COLOR="#a78bfa">🔗</FONT>'
+            icon = '<FONT COLOR="#6c757d">🔗</FONT>'
         else:
             icon = ''
 
-        nullable_marker = '' if col.is_nullable else '<FONT COLOR="#f87171"> *</FONT>'
-        unique_marker = '<FONT COLOR="#34d399"> U</FONT>' if col.is_unique else ''
+        nullable_marker = '' if col.is_nullable else '<FONT COLOR="#dc3545"> *</FONT>'
+        unique_marker = '<FONT COLOR="#28a745"> U</FONT>' if col.is_unique else ''
 
-        row_bg = '#162032' if col.is_primary_key else '#0d1520'
-        name_color = '#4f8ef7' if col.is_primary_key else '#e2e8f0'
+        row_bg = '#ffffff' if col.is_primary_key else '#f8f9fa'
+        name_color = '#000000' if col.is_primary_key else '#212529'
 
         rows.append(
             '<TR>'
@@ -252,7 +252,7 @@ def _html_table(table: Table) -> str:
             '</FONT>'
             '</TD>'
             f'<TD BGCOLOR="{row_bg}" ALIGN="RIGHT">'
-            f'<FONT COLOR="#34d399" FACE="Courier" POINT-SIZE="10">{col.data_type}</FONT>'
+            f'<FONT COLOR="#6c757d" FACE="Courier" POINT-SIZE="10">{col.data_type}</FONT>'
             '</TD>'
             '</TR>'
         )
@@ -275,13 +275,13 @@ def _build_dot(tables: Dict[str, Table], foreign_keys: List[ForeignKey],
 
     dot = Digraph(name="ERD", comment=title, format=fmt)
     dot.attr(
-        rankdir="LR", bgcolor="#0d0f14", fontname="Helvetica",
+        rankdir="LR", bgcolor="#ffffff", fontname="Helvetica",
         pad="0.5", nodesep="0.8", ranksep="1.2",
-        label=title, labelloc="t", fontcolor="#64748b", fontsize="14",
+        label=title, labelloc="t", fontcolor="#212529", fontsize="14",
     )
 
     dot.attr("node", shape="none", margin="0", fontname="Helvetica")
-    dot.attr("edge", color="#4f8ef7", fontcolor="#94a3b8", fontsize="10",
+    dot.attr("edge", color="#6c757d", fontcolor="#495057", fontsize="10",
              fontname="Helvetica", arrowsize="0.8")
 
     for table in tables.values():
@@ -295,7 +295,7 @@ def _build_dot(tables: Dict[str, Table], foreign_keys: List[ForeignKey],
                 label=f" {fk.from_col} → {fk.to_col} ",
                 arrowhead="crow", arrowtail="tee",
                 dir="both",
-                color="#a78bfa",
+                color="#6c757d",
                 style="solid",
             )
     return dot

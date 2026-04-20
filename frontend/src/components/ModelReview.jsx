@@ -9,18 +9,18 @@ import { ValidationPanel } from './ValidationPanel';
 import { generateERDFromModel } from '../api/client';
 
 var C = {
-  surface: '#13161e',
-  border: '#232840',
-  card: '#181c27',
-  accent: '#4f8ef7',
-  green: '#34d399',
-  amber: '#fbbf24',
-  purple: '#a78bfa',
-  red: '#f87171',
-  redSoft: 'rgba(248,113,113,0.12)',
-  text: '#e2e8f0',
-  textMuted: '#64748b',
-  textDim: '#94a3b8',
+  surface: '#ffffff',
+  border: '#e9ecef',
+  card: '#ffffff',
+  accent: '#ffd100',
+  green: '#28a745',
+  amber: '#ffc107',
+  purple: '#6f42c1',
+  red: '#dc3545',
+  redSoft: 'rgba(220,53,69,0.12)',
+  text: '#212529',
+  textMuted: '#6c757d',
+  textDim: '#adb5bd',
 };
 
 function innerTabStyle(active, color) {
@@ -163,7 +163,7 @@ function ERDPanel({ dataModel }) {
           justifyContent: 'center',
           padding: '48px 24px',
           gap: 16,
-          background: '#090b10',
+          background: C.card,
           border: '1px solid ' + C.border,
           borderRadius: 12,
         }}
@@ -185,8 +185,8 @@ function ERDPanel({ dataModel }) {
         <Btn
           onClick={generate}
           style={{
-            background: 'linear-gradient(135deg, #4f8ef7, #a78bfa)',
-            color: '#fff',
+            background: 'linear-gradient(135deg, ' + C.accent + ', ' + C.amber + ')',
+            color: '#000000',
             border: 'none',
           }}
         >
@@ -206,7 +206,7 @@ function ERDPanel({ dataModel }) {
           justifyContent: 'center',
           padding: '64px 24px',
           gap: 16,
-          background: '#090b10',
+          background: C.card,
           border: '1px solid ' + C.border,
           borderRadius: 12,
         }}
@@ -239,12 +239,12 @@ function ERDPanel({ dataModel }) {
         {erdError.includes('Graphviz') && (
           <div
             style={{
-              background: '#0d0f14',
+              background: C.card,
               borderRadius: 8,
               padding: 12,
               fontSize: 12,
               fontFamily: 'monospace',
-              color: C.textDim,
+              color: C.text,
               marginBottom: 16,
             }}
           >
@@ -389,7 +389,7 @@ function ERDPanel({ dataModel }) {
       {hasImage && (
         <div
           style={{
-            background: '#090b10',
+            background: C.card,
             border: '1px solid ' + C.border,
             borderRadius: 12,
             overflow: 'auto',
@@ -974,12 +974,12 @@ return (
     {activeTab === 'json' && (
       <pre
         style={{
-          background: '#090b10',
+          background: C.card,
           border: '1px solid ' + C.border,
           borderRadius: 12,
           padding: 20,
           fontSize: 12,
-          color: '#c9d1d9',
+          color: C.text,
           overflowX: 'auto',
           maxHeight: 600,
           overflowY: 'auto',
