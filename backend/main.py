@@ -27,6 +27,7 @@ from backend.agents.erd_generator import (
 )
 
 from backend.agents.schema_agent import get_prompt_summary
+from backend.agents.logical_agent import create_logical_model
 
 # -------------------------------------------------------
 # Load environment variables
@@ -143,7 +144,7 @@ def logical_model(req: LogicalModelRequest):
     Step 1: Generate a logical (engine-agnostic) data model for user review.
     """
     try:
-        from backend.agents.schema_agent import create_logical_model
+        from backend.agents.logical_model import create_logical_model
 
         result = create_logical_model(
             req.user_query,
