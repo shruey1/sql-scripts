@@ -1,13 +1,13 @@
 import { useState } from 'react';
-
+ 
 import { Btn, Badge, ErrorBanner, Spinner } from './ui/Primitives';
-
+ 
 import { ModelViewer } from './ModelViewer';
-
+ 
 import { ValidationPanel } from './ValidationPanel';
-
+ 
 import { generateERDFromModel } from '../api/client';
-
+ 
 var C = {
   surface: '#ffffff',
   border: '#e9ecef',
@@ -22,10 +22,10 @@ var C = {
   textMuted: '#6c757d',
   textDim: '#adb5bd',
 };
-
+ 
 function innerTabStyle(active, color) {
   var c = color || C.accent;
-
+ 
   return {
     padding: '7px 18px',
     borderRadius: 8,
@@ -38,12 +38,12 @@ function innerTabStyle(active, color) {
     transition: 'all 0.15s',
   };
 }
-
+ 
 // ── Labelled badge: shows “LABEL · VALUE” ────────────────────────────────────
-
+ 
 function LabelledBadge({ label, value, color }) {
   var c = color || C.accent;
-
+ 
   return (
     <span
       style={{
@@ -82,10 +82,10 @@ function LabelledBadge({ label, value, color }) {
     </span>
   );
 }
-
+ 
 function SuggestionChips({ suggestions, onApply }) {
   if (!suggestions || !suggestions.length) return null;
-
+ 
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
       {suggestions.map(function (s, i) {
@@ -115,21 +115,21 @@ function SuggestionChips({ suggestions, onApply }) {
     </div>
   );
 }
-
+ 
 // ── Inline ERD panel ─────────────────────────────────────────────────────────
-
+ 
 function ERDPanel({ dataModel }) {
   var [erdData, setErdData] = useState(null);
   var [erdLoading, setErdLoading] = useState(false);
   var [erdError, setErdError] = useState('');
   var [zoom, setZoom] = useState(1);
   var [generated, setGenerated] = useState(false);
-
+ 
   function generate() {
     setErdLoading(true);
     setErdError('');
     setGenerated(false);
-
+ 
     generateERDFromModel(dataModel)
       .then(function (res) {
         setErdData(res);
@@ -143,16 +143,16 @@ function ERDPanel({ dataModel }) {
         setErdLoading(false);
       });
   }
-
+ 
   function downloadPNG() {
     if (!erdData || !erdData.image_base64) return;
-
+ 
     var link = document.createElement('a');
     link.href = 'data:image/png;base64,' + erdData.image_base64;
     link.download = 'erd_preview.png';
     link.click();
   }
-
+ 
   if (!generated && !erdLoading) {
     return (
       <div
@@ -195,7 +195,7 @@ function ERDPanel({ dataModel }) {
       </div>
     );
   }
-
+ 
   if (erdLoading) {
     return (
       <div
@@ -218,7 +218,7 @@ function ERDPanel({ dataModel }) {
       </div>
     );
   }
-
+ 
   if (erdError) {
     return (
       <div
@@ -235,7 +235,7 @@ function ERDPanel({ dataModel }) {
         <p style={{ color: C.textDim, fontSize: 13, marginBottom: 16 }}>
           {erdError}
         </p>
-
+ 
         {erdError.includes('Graphviz') && (
           <div
             style={{
@@ -257,14 +257,14 @@ function ERDPanel({ dataModel }) {
             <p>Then restart uvicorn.</p>
           </div>
         )}
-
+ 
         <Btn onClick={generate}>↺ Try Again</Btn>
       </div>
     );
   }
-
+ 
   var hasImage = erdData && erdData.image_base64;
-
+ 
   return (
     <div>
       <div
@@ -279,13 +279,13 @@ function ERDPanel({ dataModel }) {
         {erdData && erdData.table_count > 0 && (
           <Badge color={C.accent}>{erdData.table_count} tables</Badge>
         )}
-
+ 
         {erdData && erdData.relationship_count > 0 && (
           <Badge color={C.purple}>
             {erdData.relationship_count} relationships
           </Badge>
         )}
-
+ 
         <div
           style={{
             display: 'flex',
@@ -316,7 +316,7 @@ function ERDPanel({ dataModel }) {
           >
             −
           </button>
-
+ 
           <span
             style={{
               color: C.textMuted,
@@ -327,7 +327,7 @@ function ERDPanel({ dataModel }) {
           >
             {Math.round(zoom * 100)}%
           </span>
-
+ 
           <button
             onClick={function () {
               setZoom(function (z) {
@@ -350,7 +350,7 @@ function ERDPanel({ dataModel }) {
           >
             +
           </button>
-
+ 
           <button
             onClick={function () {
               setZoom(1);
@@ -368,12 +368,12 @@ function ERDPanel({ dataModel }) {
             Reset
           </button>
         </div>
-
+ 
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
           <Btn variant="ghost" onClick={generate} style={{ padding: '6px 14px', fontSize: 12 }}>
             ↺ Regenerate
           </Btn>
-
+ 
           {hasImage && (
             <Btn
               variant="ghost"
@@ -385,7 +385,7 @@ function ERDPanel({ dataModel }) {
           )}
         </div>
       </div>
-
+ 
       {hasImage && (
         <div
           style={{
@@ -414,7 +414,7 @@ function ERDPanel({ dataModel }) {
           </div>
         </div>
       )}
-
+ 
       <div style={{ marginTop: 12, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
         {[
           { color: C.amber, symbol: '🔑', label: 'Primary Key' },
@@ -433,9 +433,9 @@ function ERDPanel({ dataModel }) {
     </div>
   );
 }
-
+ 
 // ── Main component ────────────────────────────────────────────────────────────
-
+ 
 export function ModelReview({
   dataModel,
   operation,
@@ -444,6 +444,8 @@ export function ModelReview({
   loading,
   error,
   onAutoValidate,
+  onValidateOnly,
+  onGenerateSQL,
   onApprove,
   onFeedback,
   onBack,
@@ -452,13 +454,13 @@ export function ModelReview({
 }) {
   var hasRelational = !!(dataModel && dataModel.relational_model);
   var hasAnalytical = !!(dataModel && dataModel.analytical_model);
-
+ 
   var modelViewerKey = hasRelational ? 'relational' : 'analytical';
-
+ 
   var [activeTab, setActiveTab] = useState('model');
   var [feedbackOpen, setFeedbackOpen] = useState(false);
   var [feedbackText, setFeedbackText] = useState('');
-
+ 
   var [applyPartitioning, setApplyPartitioning] = useState(false);
   // Show partition suggestions if they exist in the model
   var partitionSuggestions = (
@@ -466,76 +468,76 @@ export function ModelReview({
   dataModel?.partition_suggestions ||
   []
   );
-
+ 
   var autoFailed = validationMode === 'auto' && validation && !validation.is_valid;
-
+ 
   function getScopedJson() {
     if (!dataModel) return {};
-
+ 
     if (hasRelational && hasAnalytical) return dataModel;
     if (hasRelational) return dataModel.relational_model;
     if (hasAnalytical) return dataModel.analytical_model;
-
+ 
     return dataModel;
   }
-
+ 
   function handleFeedbackSubmit() {
     if (!feedbackText.trim()) return;
-
+ 
     onFeedback(feedbackText);
     setFeedbackText('');
     setFeedbackOpen(false);
   }
-
+ 
   function handleChipClick(suggestion) {
     setFeedbackText(suggestion);
     setFeedbackOpen(true);
   }
-
+ 
   function handleFixAll() {
     var parts = [];
-
+ 
     if (validation.errors && validation.errors.length)
       parts.push('Fix these errors: ' + validation.errors.join('; '));
-
+ 
     if (validation.suggestions && validation.suggestions.length)
       parts.push('Also apply: ' + validation.suggestions.join('; '));
-
+ 
     setFeedbackText(parts.join('\n'));
     setFeedbackOpen(true);
   }
-
+ 
   // ── Derive badge values ───────────────────────────────────────────────────
-
+ 
   var modeLabel = operation === 'CREATE' ? 'Create' : 'Modify';
   var modeColor = operation === 'CREATE' ? C.green : C.amber;
-
+ 
   var modelTypeLabel =
     hasRelational && hasAnalytical
       ? 'Both'
       : hasRelational
       ? 'Relational'
       : 'Analytical';
-
+ 
   var modelTypeColor =
     hasRelational && !hasAnalytical
       ? C.green
       : hasAnalytical && !hasRelational
       ? C.purple
       : C.accent;
-
+ 
   var engineLabel =
     dbEngine ||
     (dataModel && dataModel.db_type) ||
     (dataModel && dataModel.relational_model && dataModel.relational_model.db_type) ||
     (dataModel && dataModel.analytical_model && dataModel.analytical_model.db_type) ||
     'MySQL';
-
+ 
   var validationLabel = validationMode === 'auto' ? 'Auto' : 'Manual';
   var validationColor = validationMode === 'auto' ? C.purple : C.accent;
-
+ 
   var modelLabel = 'Model';
-
+ 
 return (
   <div>
     {operation === 'MODIFY' && changes && changes.summary && (
@@ -552,7 +554,7 @@ return (
     }}
   >
     <span style={{ fontSize: 18, marginTop: 1 }}>✎</span>
-
+ 
     <div>
       <p
         style={{
@@ -564,7 +566,7 @@ return (
       >
         Changes Applied
       </p>
-
+ 
       <p
         style={{
           fontSize: 13,
@@ -574,7 +576,7 @@ return (
       >
         {changes.summary}
       </p>
-
+ 
       <div
         style={{
           display: 'flex',
@@ -599,7 +601,7 @@ return (
             + table: {t}
           </span>
         ))}
-
+ 
         {(changes.modified_tables || []).map((t) => (
           <span
             key={t}
@@ -616,7 +618,7 @@ return (
             ~ modified: {t}
           </span>
         ))}
-
+ 
         {(changes.added_columns || []).map((c) => (
           <span
             key={c}
@@ -637,7 +639,7 @@ return (
     </div>
   </div>
 )}
-
+ 
     {/* Page header */}
     <div
       style={{
@@ -653,7 +655,7 @@ return (
         <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>
           Data Model
         </h2>
-
+ 
         {/* FIX #4 — Labelled badges */}
         <div
           style={{
@@ -677,16 +679,16 @@ return (
             color={validationColor}
           />
         </div>
-
+ 
         <p style={{ color: C.textMuted, fontSize: 14 }}>
           Review your data model. Preview the ERD, check the raw JSON, then
           validate and generate SQL.
         </p>
       </div>
-
+ 
       {/* Action buttons */}
 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-  
+ 
     <Btn
         variant="ghost"
         onClick={onBack}
@@ -695,15 +697,37 @@ return (
       >
         ← Logical Model
       </Btn>
-
-
-  {/* --- Existing validation / approval buttons --- */}
+ 
+  {/* --- Separate Validate & Generate SQL buttons --- */}
   {validationMode === 'auto' ? (
-    (!validation || validation.is_valid) && (
-      <Btn onClick={onAutoValidate} loading={loading}>
-        Validate &amp; Generate SQL →
-      </Btn>
-    )
+    <>
+      {/* If validation not yet done, show Validate button */}
+      {!validation && (
+        <Btn onClick={onValidateOnly} loading={loading}>
+          ✓ Validate Model
+        </Btn>
+      )}
+     
+      {/* If validation done and valid, show Generate SQL button */}
+      {validation && validation.is_valid && (
+        <Btn variant="success" onClick={onGenerateSQL} loading={loading}>
+          Generate SQL →
+        </Btn>
+      )}
+ 
+      {/* If validation failed, show Suggest Changes button */}
+      {validation && !validation.is_valid && (
+        <Btn
+          variant="ghost"
+          onClick={() => {
+            setFeedbackOpen(o => !o);
+          }}
+          disabled={loading}
+        >
+          ✎ Suggest Changes
+        </Btn>
+      )}
+    </>
   ) : (
     <>
       <Btn
@@ -715,18 +739,18 @@ return (
       >
         ✎ Suggest Changes
       </Btn>
-
+ 
       <Btn variant="success" onClick={() => onApprove(false)} loading={loading}>
         ✓ Approve &amp; Generate SQL
       </Btn>
     </>
   )}
-
+ 
 </div>
-
+ 
     {/* Validation result */}
     {validation && <ValidationPanel result={validation} />}
-
+ 
     {/* Auto-validation failed: fix panel */}
     {autoFailed && (
       <div
@@ -763,7 +787,7 @@ return (
               Apply suggested fixes or describe changes, then re-validate.
             </p>
           </div>
-
+ 
           <div style={{ display: 'flex', gap: 10 }}>
             <Btn variant="ghost" onClick={handleFixAll} disabled={loading}
                   style={{ borderColor: C.amber + '55', color: C.amber }}>
@@ -771,7 +795,7 @@ return (
             </Btn>
           </div>
         </div>
-
+ 
         {validation.suggestions && validation.suggestions.length > 0 && (
           <div style={{ marginBottom: 14 }}>
             <p
@@ -792,7 +816,7 @@ return (
             />
           </div>
         )}
-
+ 
         {validation.errors && validation.errors.length > 0 && (
           <div style={{ marginBottom: 14 }}>
             <p
@@ -835,7 +859,7 @@ return (
             </div>
           </div>
         )}
-
+ 
         <div>
           <p
             style={{
@@ -879,7 +903,7 @@ return (
         </div>
       </div>
     )}
-
+ 
     {/* Manual feedback panel */}
     {validationMode === 'manual' && feedbackOpen && (
       <div
@@ -931,9 +955,9 @@ return (
         </div>
       </div>
     )}
-
+ 
     <ErrorBanner message={error} />
-
+ 
     {/* Tabs */}
     <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
       <button
@@ -944,7 +968,7 @@ return (
       >
         {modelLabel}
       </button>
-
+ 
       <button
         style={innerTabStyle(activeTab === 'erd', C.purple)}
         onClick={function () {
@@ -953,7 +977,7 @@ return (
       >
         ⬡ ERD Preview
       </button>
-
+ 
       <button
         style={innerTabStyle(activeTab === 'json', C.textMuted)}
         onClick={function () {
@@ -963,14 +987,14 @@ return (
         Raw JSON
       </button>
     </div>
-
+ 
     {/* Tab content */}
     {activeTab === 'model' && (
       <ModelViewer dataModel={dataModel} activeTab={modelViewerKey} changes={changes} />
     )}
-
+ 
     {activeTab === 'erd' && <ERDPanel dataModel={dataModel} />}
-
+ 
     {activeTab === 'json' && (
       <pre
         style={{
@@ -994,3 +1018,5 @@ return (
   </div>
 );
 }
+ 
+ 

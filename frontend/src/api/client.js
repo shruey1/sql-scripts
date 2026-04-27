@@ -1,21 +1,21 @@
 // api/client.js — all backend calls in one place
-
+ 
 async function post(path, body) {
   const res = await fetch(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-
+ 
   if (!res.ok) {
     const err =
       (await res.json().catch(() => ({ detail: res.statusText }))) || {};
     throw new Error(err.detail || res.statusText);
   }
-
+ 
   return res.json();
 }
-
+ 
 export function generateModel(
   userQuery,
   operation,
@@ -35,7 +35,7 @@ export function generateModel(
     logical_model: logicalModel || null,
   });
 }
-
+ 
 export function generateLogicalModel(userQuery, dbEngine, customKb, modelType) {
   return post("/workflow/logical", {
     user_query: userQuery,
@@ -44,21 +44,28 @@ export function generateLogicalModel(userQuery, dbEngine, customKb, modelType) {
     model_type: modelType || "relational",
   });
 }
-
+ 
 export function validateAndGenerateSQL(dataModel, operation) {
   return post("/workflow/validate", {
     data_model: dataModel,
     operation: operation,
   });
 }
-
-export function validateModel(dataModel, dbEngine) {
-  return post("/workflow/validate", {
+ 
+export function validateModel(dataModel, operation) {
+  return post("/workflow/validate-only", {
     data_model: dataModel,
-    db_engine: dbEngine || "MySQL",
+    operation: operation,
   });
 }
-
+ 
+export function generateSQL(dataModel, operation) {
+  return post("/workflow/generate-sql", {
+    data_model: dataModel,
+    operation: operation,
+  });
+}
+ 
 export function approveAndGenerateSQL(dataModel, operation,apply_partitioning=false) {
   return post("/workflow/approve", {
     data_model: dataModel,
@@ -66,7 +73,7 @@ export function approveAndGenerateSQL(dataModel, operation,apply_partitioning=fa
     apply_partitioning: apply_partitioning, // New field to control partitioning in SQL generation
   });
 }
-
+ 
 export function applyFeedbackAndGenerateSQL(dataModel, feedback, operation) {
   return post("/workflow/feedback", {
     data_model: dataModel,
@@ -74,35 +81,35 @@ export function applyFeedbackAndGenerateSQL(dataModel, feedback, operation) {
     operation: operation,
   });
 }
-
+ 
 export function generateERD(sql, title) {
   return post("/workflow/erd", {
     sql: sql,
     title: title || "Entity Relationship Diagram",
   });
 }
-
+ 
 export function generateERDXML(sql, title) {
   return post("/workflow/erd/xml", {
     sql: sql,
     title: title || "Entity Relationship Diagram",
   });
 }
-
+ 
 export function generateERDPDM(sql, title) {
   return post("/workflow/erd/pdm", {
     sql: sql,
     title: title || "Physical Data Model",
   });
 }
-
+ 
 export function generateERDFromModel(dataModel, title) {
   return post("/workflow/erd/from-model", {
     data_model: dataModel,
     title: title || "Entity Relationship Diagram",
   });
 }
-
+ 
 // #1 — prompt summary for InputForm sidebar
 export function getPromptSummary(userQuery, dbEngine, modelType) {
   return post("/workflow/prompt-summary", {
@@ -111,3 +118,4 @@ export function getPromptSummary(userQuery, dbEngine, modelType) {
     model_type: modelType || "relational",
   });
 }
+ 

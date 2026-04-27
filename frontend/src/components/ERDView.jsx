@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Btn, Badge } from "./ui/Primitives";
-import { generateERDXML, generateERDPDM } from "../api/client";
-
+import { generateERDXML } from "../api/client";
+ 
 const C = {
   surface: "#ffffff",
   card: "#ffffff",
@@ -18,7 +18,7 @@ const C = {
   teal: "#20c997",
   orange: "#fd7e14",
 };
-
+ 
 export function ERDView({
   erdData,
   sqlOutput,
@@ -30,18 +30,16 @@ export function ERDView({
   const [zoom, setZoom] = useState(1);
   const [xmlLoading, setXmlLoading] = useState(false);
   const [xmlError, setXmlError] = useState("");
-  const [pdmLoading, setPdmLoading] = useState(false);
-  const [pdmError, setPdmError] = useState("");
-
+ 
   const hasImage = erdData && erdData.image_base64;
   const hasError = erdData && erdData.error;
   const hasSql = sqlOutput && sqlOutput.combined_sql;
-
+ 
   // Always regenerate ERD using full SQL to capture FK edges
   function handleRegenerateWithFullSql() {
     if (hasSql) onRegenerate(sqlOutput.combined_sql);
   }
-
+ 
   function downloadPNG() {
     if (!hasImage) return;
     const link = document.createElement("a");
@@ -49,11 +47,11 @@ export function ERDView({
     link.download = "erd_diagram.png";
     link.click();
   }
-
+ 
   // PDF: open printable page with the PNG
   function downloadPDF() {
     if (!hasImage) return;
-
+ 
     const html = `
 <!DOCTYPE html>
 <html>
@@ -77,18 +75,18 @@ export function ERDView({
 </script>
 </body>
 </html>`;
-
+ 
     const blob = new Blob([html], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     const win = window.open(url, "_blank");
     if (win) win.onafterprint = () => URL.revokeObjectURL(url);
   }
-
+ 
   function downloadXML() {
     if (!hasSql) return;
     setXmlLoading(true);
     setXmlError("");
-
+ 
     generateERDXML(sqlOutput.combined_sql)
       .then((res) => {
         if (res.error) {
@@ -106,30 +104,7 @@ export function ERDView({
       .catch((e) => setXmlError(e?.message || "Failed to generate XML."))
       .finally(() => setXmlLoading(false));
   }
-
-  function downloadPDM() {
-    if (!hasSql) return;
-    setPdmLoading(true);
-    setPdmError("");
-
-    generateERDPDM(sqlOutput.combined_sql)
-      .then((res) => {
-        if (res.error) {
-          setPdmError(res.error);
-          return;
-        }
-        const blob = new Blob([res.xml], { type: "application/xml" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = "erd_diagram.pdm";
-        link.click();
-        URL.revokeObjectURL(url);
-      })
-      .catch((e) => setPdmError(e?.message || "Failed to generate PDM."))
-      .finally(() => setPdmLoading(false));
-  }
-
+ 
   return (
     <div>
       {/* Header */}
@@ -154,30 +129,30 @@ export function ERDView({
             }}
           >
             <h2 style={{ fontSize: 22, fontWeight: 700 }}>ER Diagram</h2>
-
+ 
             {hasImage && <Badge color={C.green}>Generated</Badge>}
-
+ 
             {erdData && erdData.table_count > 0 && (
               <Badge color={C.accent}>{erdData.table_count} tables</Badge>
             )}
-
+ 
             {erdData && erdData.relationship_count > 0 && (
               <Badge color={C.purple}>
                 {erdData.relationship_count} relationships
               </Badge>
             )}
           </div>
-
+ 
           <p style={{ color: C.textMuted, fontSize: 14 }}>
             Entity relationship diagram generated from your SQL DDL scripts.
           </p>
         </div>
-
+ 
         <Btn variant="ghost" onClick={onBack}>
           ← Back to SQL
         </Btn>
       </div>
-
+ 
       {/* Relationship warning */}
       {hasImage &&
         erdData &&
@@ -210,7 +185,7 @@ export function ERDView({
             </Btn>
           </div>
         )}
-
+ 
       {/* ERD error */}
       {hasError && (
         <div
@@ -228,7 +203,7 @@ export function ERDView({
           <p style={{ color: C.textDim, fontSize: 13, marginBottom: 12 }}>
             {erdData.error}
           </p>
-
+ 
           {erdData.error.includes("Graphviz") && (
             <div
               style={{
@@ -248,7 +223,7 @@ export function ERDView({
               <p>Restart uvicorn after installing.</p>
             </div>
           )}
-
+ 
           <div style={{ marginTop: 16 }}>
             <Btn onClick={() => onRegenerate(sqlOutput?.combined_sql)} loading={loading}>
               ↺ Try Again
@@ -256,7 +231,7 @@ export function ERDView({
           </div>
         </div>
       )}
-
+ 
       {/* Export errors */}
       {xmlError && (
         <div
@@ -273,23 +248,7 @@ export function ERDView({
           ⚠ XML export failed: {xmlError}
         </div>
       )}
-
-      {pdmError && (
-        <div
-          style={{
-            background: C.redSoft,
-            border: "1px solid " + C.red + "44",
-            borderRadius: 8,
-            padding: "10px 16px",
-            marginBottom: 12,
-            fontSize: 13,
-            color: C.red,
-          }}
-        >
-          ⚠ PDM export failed: {pdmError}
-        </div>
-      )}
-
+ 
       {/* Diagram */}
       {hasImage && (
         <>
@@ -322,11 +281,11 @@ export function ERDView({
             >
               −
             </button>
-
+ 
             <span style={{ color: C.textMuted, fontSize: 13, minWidth: 48, textAlign: "center" }}>
               {Math.round(zoom * 100)}%
             </span>
-
+ 
             {/* Zoom In */}
             <button
               onClick={() => setZoom((z) => Math.min(3, z + 0.15))}
@@ -346,7 +305,7 @@ export function ERDView({
             >
               +
             </button>
-
+ 
             {/* Reset */}
             <button
               onClick={() => setZoom(1)}
@@ -362,13 +321,13 @@ export function ERDView({
             >
               Reset
             </button>
-
+ 
             {/* Downloads */}
             <div style={{ marginLeft: "auto", display: "flex", gap: 8, flexWrap: "wrap" }}>
               <Btn variant="ghost" onClick={downloadPNG} style={{ fontSize: 12, padding: "6px 14px" }}>
                 ⬇ PNG
               </Btn>
-
+ 
               <Btn
                 variant="ghost"
                 onClick={downloadPDF}
@@ -382,7 +341,7 @@ export function ERDView({
               >
                 ⬇ PDF
               </Btn>
-
+ 
               <Btn
                 variant="ghost"
                 onClick={downloadXML}
@@ -397,24 +356,9 @@ export function ERDView({
               >
                 ⬇ XML
               </Btn>
-
-              <Btn
-                variant="ghost"
-                onClick={downloadPDM}
-                loading={pdmLoading}
-                disabled={!hasSql}
-                style={{
-                  fontSize: 12,
-                  padding: "6px 14px",
-                  border: "1px solid " + C.teal,
-                  color: C.teal,
-                }}
-              >
-                ⬇ PDM
-              </Btn>
             </div>
           </div>
-
+ 
           {/* Format hints */}
           <div
             style={{
@@ -429,16 +373,12 @@ export function ERDView({
             <span>
               <span style={{ color: C.orange }}>PDF</span> — opens print dialog (A3 landscape recommended)
             </span>
-
+ 
             <span>
               <span style={{ color: C.purple }}>XML</span> — draw.io compatible (File → Import → XML)
             </span>
-
-            <span>
-              <span style={{ color: C.teal }}>PDM</span> — PowerDesigner 16.x (File → Open)
-            </span>
           </div>
-
+ 
           {/* Image */}
           <div
             style={{
@@ -466,7 +406,7 @@ export function ERDView({
               />
             </div>
           </div>
-
+ 
           {/* Legend */}
           <div style={{ marginTop: 16, display: "flex", gap: 20, flexWrap: "wrap" }}>
             {[
@@ -483,7 +423,7 @@ export function ERDView({
           </div>
         </>
       )}
-
+ 
       {/* Footer */}
       <div style={{ marginTop: 28, display: "flex", gap: 12 }}>
         <Btn variant="ghost" onClick={onReset}>
@@ -493,3 +433,4 @@ export function ERDView({
     </div>
   );
 }
+ 

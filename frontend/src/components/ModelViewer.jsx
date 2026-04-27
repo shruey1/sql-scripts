@@ -1,5 +1,5 @@
 import { useState } from 'react';
-
+ 
 const C = {
   card: '#ffffff',
   border: '#e9ecef',
@@ -13,7 +13,7 @@ const C = {
   textMuted: '#6c757d',
   textDim: '#adb5bd',
 };
-
+ 
 function Badge({ color, children }) {
   const col = color || C.accent;
   return (
@@ -36,14 +36,14 @@ function Badge({ color, children }) {
     </span>
   );
 }
-
+ 
 function TableCard({ table, badge,addedColumns = new Set(), modifiedColumns= new Set(), addedTables = new Set(), modifiedTables = new Set() }) {
   const [open, setOpen] = useState(true);
   const cols = table.columns || [];
   const pk = Array.isArray(table.primary_key)
     ? table.primary_key
     : [table.primary_key].filter(Boolean);
-
+ 
   return (
     <div
       style={{
@@ -77,40 +77,37 @@ function TableCard({ table, badge,addedColumns = new Set(), modifiedColumns= new
           }}
         >
           {table.name}
-        
+       
         </span>
-
+ 
         {badge && <Badge color={badge.color}>{badge.label}</Badge>}
-
+ 
         {addedTables?.has(table.name) && (
           <Badge color={C.green}>NEW</Badge>
         )}
-
+ 
         {modifiedTables?.has(table.name) && (
           <Badge color={C.amber}>MODIFIED</Badge>
         )}
-
-
+ 
+ 
         <span style={{ marginLeft: 'auto', color: C.textMuted, fontSize: 12 }}>
           {cols.length} cols
         </span>
-
+ 
         {table.description && (
           <span
             style={{
               color: C.textDim,
               fontSize: 12,
-              maxWidth: 300,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
             }}
+            title={table.description}
           >
             — {table.description}
           </span>
         )}
       </div>
-
+ 
       {open && (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -213,7 +210,7 @@ function TableCard({ table, badge,addedColumns = new Set(), modifiedColumns= new
     </div>
   );
 }
-
+ 
 function RelationshipsList({ rels }) {
   if (!rels || !rels.length) return null;
   return (
@@ -258,7 +255,7 @@ function RelationshipsList({ rels }) {
     </div>
   );
 }
-
+ 
 export function ModelViewer({ dataModel, activeTab, changes }) {
   const addedTables = new Set(changes?.added_tables || []);
   const removedTables = new Set(changes?.removed_tables || []);
@@ -266,9 +263,9 @@ export function ModelViewer({ dataModel, activeTab, changes }) {
   const addedColumns = new Set(changes?.added_columns || []);
   const removedColumns = new Set(changes?.removed_columns || []);
   const modifiedColumns = new Set(changes?.modified_columns || []);
-
+ 
   if (!dataModel) return null;
-
+ 
   if (activeTab === 'json') {
     return (
       <pre
@@ -290,12 +287,12 @@ export function ModelViewer({ dataModel, activeTab, changes }) {
       </pre>
     );
   }
-
+ 
   if (activeTab === 'relational') {
     // Support both wrapped { relational_model: {…} } and flat { tables: […] }
     const m = dataModel.relational_model || (dataModel.tables ? dataModel : null);
     if (!m) return <p style={{ color: C.textMuted }}>No relational model found.</p>;
-
+ 
     return (
       <div>
         <div
@@ -314,7 +311,7 @@ export function ModelViewer({ dataModel, activeTab, changes }) {
             {(m.tables || []).length} tables
           </span>
         </div>
-
+ 
         {(m.tables || []).map((t, i) => (
 <TableCard key={i} table={t}
            addedTables={addedTables} modifiedTables={modifiedTables}
@@ -324,12 +321,12 @@ export function ModelViewer({ dataModel, activeTab, changes }) {
       </div>
     );
   }
-
+ 
   if (activeTab === 'analytical') {
     // Support both wrapped { analytical_model: {…} } and flat { fact_tables: […] }
     const a = dataModel.analytical_model || (dataModel.fact_tables ? dataModel : null);
     if (!a) return <p style={{ color: C.textMuted }}>No analytical model found.</p>;
-
+ 
     return (
       <div>
         <div
@@ -348,7 +345,7 @@ export function ModelViewer({ dataModel, activeTab, changes }) {
             {(a.fact_tables || []).length} fact · {(a.dimension_tables || []).length} dim
           </span>
         </div>
-
+ 
         {(a.fact_tables || []).map((t, i) => (
 <TableCard key={i} table={t} badge={{ color: C.purple, label: 'fact' }}
            addedTables={addedTables} modifiedTables={modifiedTables}
@@ -363,6 +360,8 @@ export function ModelViewer({ dataModel, activeTab, changes }) {
       </div>
     );
   }
-
+ 
   return <p style={{ color: C.textMuted }}>No data for this tab.</p>;
 }
+ 
+ 
